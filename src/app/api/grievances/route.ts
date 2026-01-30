@@ -35,17 +35,28 @@ export async function GET(request: Request) {
     const priority = searchParams.get("priority") || undefined;
     const departmentId = searchParams.get("departmentId") || undefined;
 
+    const search = searchParams.get("search") || undefined;
+
     const grievances = await prisma.grievance.findMany({
       where: {
         organizationId: dbUser.organizationId,
         ...(status && { status: status as "OPEN" | "IN_PROGRESS" | "PENDING_RESPONSE" | "RESOLVED" | "CLOSED" | "WITHDRAWN" }),
         ...(priority && { priority: priority as "LOW" | "MEDIUM" | "HIGH" | "URGENT" }),
         ...(departmentId && { departmentId }),
+        ...(search && {
+          OR: [
+            { grievanceNumber: { contains: search, mode: "insensitive" as const } },
+            { description: { contains: search, mode: "insensitive" as const } },
+          ],
+        }),
       },
       include: {
         member: true,
         representative: true,
         department: true,
+        steps: {
+          orderBy: { stepNumber: "asc" },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -106,7 +117,7 @@ export async function POST(request: Request) {
       orderBy: { stepNumber: "asc" },
     });
 
-    // Create grievance with steps in a transaction
+    // Create grievance with steps and contract violations in a transaction
     const grievance = await prisma.$transaction(async (tx) => {
       const newGrievance = await tx.grievance.create({
         data: {
@@ -117,6 +128,9 @@ export async function POST(request: Request) {
           representativeId: validatedData.representativeId || null,
           departmentId: validatedData.departmentId || null,
           description: validatedData.description,
+          reliefRequested: validatedData.reliefRequested || null,
+          memberJobTitle: validatedData.memberJobTitle || null,
+          commissionerName: validatedData.commissionerName || null,
           priority: validatedData.priority,
           filingDate: validatedData.filingDate,
           customFields: validatedData.customFields as object | undefined,
@@ -128,18 +142,42 @@ export async function POST(request: Request) {
         },
       });
 
-      // Create steps from templates
+      // Create steps from templates with cascading deadlines
+      // Each step's deadline is calculated from the previous step's deadline
       if (stepTemplates.length > 0) {
         const filingDate = new Date(validatedData.filingDate);
-        await tx.grievanceStep.createMany({
-          data: stepTemplates.map((template) => ({
+        const stepsData = [];
+        let previousDeadline = filingDate;
+
+        for (const template of stepTemplates) {
+          let deadline: Date | null = null;
+
+          if (template.defaultDays) {
+            // Calculate deadline from the previous step's deadline (or filing date for step 1)
+            deadline = new Date(previousDeadline.getTime() + template.defaultDays * 24 * 60 * 60 * 1000);
+            previousDeadline = deadline;
+          }
+
+          stepsData.push({
             grievanceId: newGrievance.id,
             stepNumber: template.stepNumber,
             name: template.name,
             description: template.description,
-            deadline: template.defaultDays
-              ? new Date(filingDate.getTime() + template.defaultDays * 24 * 60 * 60 * 1000)
-              : null,
+            deadline,
+          });
+        }
+
+        await tx.grievanceStep.createMany({
+          data: stepsData,
+        });
+      }
+
+      // Create contract violations if article IDs provided
+      if (validatedData.contractArticleIds && validatedData.contractArticleIds.length > 0) {
+        await tx.grievanceContractViolation.createMany({
+          data: validatedData.contractArticleIds.map((articleId) => ({
+            grievanceId: newGrievance.id,
+            contractArticleId: articleId,
           })),
         });
       }

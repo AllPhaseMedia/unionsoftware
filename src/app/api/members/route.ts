@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
 import { memberSchema } from "@/lib/validations";
+import { ZodError } from "zod";
 
 export async function GET(request: Request) {
   try {
@@ -35,6 +36,7 @@ export async function GET(request: Request) {
             { firstName: { contains: search, mode: "insensitive" } },
             { lastName: { contains: search, mode: "insensitive" } },
             { email: { contains: search, mode: "insensitive" } },
+            { memberId: { contains: search, mode: "insensitive" } },
           ],
         }),
         ...(status && { status: status as "MEMBER" | "NON_MEMBER" | "SEVERED" }),
@@ -78,15 +80,20 @@ export async function POST(request: Request) {
 
     const member = await prisma.member.create({
       data: {
+        memberId: validatedData.memberId || null,
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
         email: validatedData.email || null,
-        phone: validatedData.phone || null,
+        homePhone: validatedData.homePhone || null,
+        cellPhone: validatedData.cellPhone || null,
         address: validatedData.address || null,
         city: validatedData.city || null,
         state: validatedData.state || null,
         zipCode: validatedData.zipCode || null,
+        dateOfBirth: validatedData.dateOfBirth || null,
         hireDate: validatedData.hireDate || null,
+        jobTitle: validatedData.jobTitle || null,
+        workLocation: validatedData.workLocation || null,
         departmentId: validatedData.departmentId || null,
         status: validatedData.status,
         employmentType: validatedData.employmentType || null,
@@ -99,8 +106,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, data: member }, { status: 201 });
   } catch (error) {
     console.error("Error creating member:", error);
-    if (error instanceof Error && error.name === "ZodError") {
-      return NextResponse.json({ error: "Invalid data" }, { status: 400 });
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        { error: "Invalid data", details: error.errors },
+        { status: 400 }
+      );
     }
     return NextResponse.json(
       { error: "Failed to create member" },

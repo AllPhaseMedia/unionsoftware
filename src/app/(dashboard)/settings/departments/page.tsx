@@ -36,6 +36,7 @@ export default function DepartmentsPage() {
   const [formData, setFormData] = useState({
     name: "",
     code: "",
+    commissionerName: "",
     isActive: true,
   });
 
@@ -61,11 +62,12 @@ export default function DepartmentsPage() {
       setFormData({
         name: dept.name,
         code: dept.code || "",
+        commissionerName: dept.commissionerName || "",
         isActive: dept.isActive,
       });
     } else {
       setEditingDept(null);
-      setFormData({ name: "", code: "", isActive: true });
+      setFormData({ name: "", code: "", commissionerName: "", isActive: true });
     }
     setIsDialogOpen(true);
   };
@@ -141,6 +143,17 @@ export default function DepartmentsPage() {
                   placeholder="Optional department code"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="commissionerName">Commissioner Name</Label>
+                <Input
+                  id="commissionerName"
+                  value={formData.commissionerName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, commissionerName: e.target.value })
+                  }
+                  placeholder="Name of department commissioner"
+                />
+              </div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="isActive">Active</Label>
                 <Switch
@@ -185,6 +198,7 @@ export default function DepartmentsPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Code</TableHead>
+                  <TableHead>Commissioner</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
@@ -194,6 +208,7 @@ export default function DepartmentsPage() {
                   <TableRow key={dept.id}>
                     <TableCell className="font-medium">{dept.name}</TableCell>
                     <TableCell>{dept.code || "-"}</TableCell>
+                    <TableCell>{dept.commissionerName || "-"}</TableCell>
                     <TableCell>
                       <Badge
                         variant={dept.isActive ? "default" : "secondary"}

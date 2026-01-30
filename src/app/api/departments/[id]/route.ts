@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
-import { memberSchema } from "@/lib/validations";
+import { departmentSchema } from "@/lib/validations";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -27,35 +27,22 @@ export async function GET(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const member = await prisma.member.findFirst({
+    const department = await prisma.department.findFirst({
       where: {
         id,
         organizationId: dbUser.organizationId,
       },
-      include: {
-        department: true,
-        grievances: {
-          orderBy: { createdAt: "desc" },
-        },
-        notes: {
-          include: { user: true },
-          orderBy: { createdAt: "desc" },
-        },
-        documents: {
-          orderBy: { uploadedAt: "desc" },
-        },
-      },
     });
 
-    if (!member) {
-      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+    if (!department) {
+      return NextResponse.json({ error: "Department not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data: member });
+    return NextResponse.json({ success: true, data: department });
   } catch (error) {
-    console.error("Error fetching member:", error);
+    console.error("Error fetching department:", error);
     return NextResponse.json(
-      { error: "Failed to fetch member" },
+      { error: "Failed to fetch department" },
       { status: 500 }
     );
   }
@@ -77,58 +64,43 @@ export async function PUT(request: Request, { params }: RouteParams) {
       where: { supabaseUserId: authUser.id },
     });
 
-    if (!dbUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (!dbUser || dbUser.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    // Verify member belongs to the organization
-    const existingMember = await prisma.member.findFirst({
+    // Verify department belongs to organization
+    const existingDept = await prisma.department.findFirst({
       where: {
         id,
         organizationId: dbUser.organizationId,
       },
     });
 
-    if (!existingMember) {
-      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+    if (!existingDept) {
+      return NextResponse.json({ error: "Department not found" }, { status: 404 });
     }
 
     const body = await request.json();
-    const validatedData = memberSchema.parse(body);
+    const validatedData = departmentSchema.parse(body);
 
-    const member = await prisma.member.update({
+    const department = await prisma.department.update({
       where: { id },
       data: {
-        memberId: validatedData.memberId || null,
-        firstName: validatedData.firstName,
-        lastName: validatedData.lastName,
-        email: validatedData.email || null,
-        homePhone: validatedData.homePhone || null,
-        cellPhone: validatedData.cellPhone || null,
-        address: validatedData.address || null,
-        city: validatedData.city || null,
-        state: validatedData.state || null,
-        zipCode: validatedData.zipCode || null,
-        dateOfBirth: validatedData.dateOfBirth || null,
-        hireDate: validatedData.hireDate || null,
-        jobTitle: validatedData.jobTitle || null,
-        workLocation: validatedData.workLocation || null,
-        departmentId: validatedData.departmentId || null,
-        status: validatedData.status,
-        employmentType: validatedData.employmentType || null,
-        customFields: validatedData.customFields as object | undefined,
+        name: validatedData.name,
+        code: validatedData.code || null,
+        commissionerName: validatedData.commissionerName || null,
+        isActive: validatedData.isActive,
       },
-      include: { department: true },
     });
 
-    return NextResponse.json({ success: true, data: member });
+    return NextResponse.json({ success: true, data: department });
   } catch (error) {
-    console.error("Error updating member:", error);
+    console.error("Error updating department:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json({ error: "Invalid data" }, { status: 400 });
     }
     return NextResponse.json(
-      { error: "Failed to update member" },
+      { error: "Failed to update department" },
       { status: 500 }
     );
   }
@@ -154,27 +126,38 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    // Verify member belongs to the organization
-    const existingMember = await prisma.member.findFirst({
+    // Verify department belongs to organization
+    const existingDept = await prisma.department.findFirst({
       where: {
         id,
         organizationId: dbUser.organizationId,
       },
     });
 
-    if (!existingMember) {
-      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+    if (!existingDept) {
+      return NextResponse.json({ error: "Department not found" }, { status: 404 });
     }
 
-    await prisma.member.delete({
-      where: { id },
-    });
+    // Check if department has members or grievances
+    const [membersCount, grievancesCount] = await Promise.all([
+      prisma.member.count({ where: { departmentId: id } }),
+      prisma.grievance.count({ where: { departmentId: id } }),
+    ]);
+
+    if (membersCount > 0 || grievancesCount > 0) {
+      return NextResponse.json(
+        { error: "Cannot delete department with associated members or grievances" },
+        { status: 400 }
+      );
+    }
+
+    await prisma.department.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting member:", error);
+    console.error("Error deleting department:", error);
     return NextResponse.json(
-      { error: "Failed to delete member" },
+      { error: "Failed to delete department" },
       { status: 500 }
     );
   }

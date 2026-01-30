@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,11 +12,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
-import { Check, Clock, AlertTriangle, SkipForward, Loader2 } from "lucide-react";
+import { Check, Clock, AlertTriangle, SkipForward, Loader2, CalendarIcon, Pencil, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import type { GrievanceStep } from "@/types";
 
 interface StepsTimelineProps {
@@ -41,15 +49,25 @@ const statusColors: Record<string, string> = {
 };
 
 export function StepsTimeline({ steps, grievanceId, onStepUpdate }: StepsTimelineProps) {
+  const router = useRouter();
   const [updatingStep, setUpdatingStep] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedStep, setSelectedStep] = useState<GrievanceStep | null>(null);
+  const [completionDate, setCompletionDate] = useState<Date>(new Date());
+  const [editingDeadline, setEditingDeadline] = useState<string | null>(null);
+  const [editingCompletionDate, setEditingCompletionDate] = useState<string | null>(null);
+
+  const refreshData = () => {
+    router.refresh();
+    onStepUpdate?.();
+  };
 
   const updateStepStatus = async (
     stepId: string,
     newStatus: string,
-    stepNotes?: string
+    stepNotes?: string,
+    customCompletedAt?: Date
   ) => {
     setUpdatingStep(stepId);
     try {
@@ -59,7 +77,9 @@ export function StepsTimeline({ steps, grievanceId, onStepUpdate }: StepsTimelin
         body: JSON.stringify({
           status: newStatus,
           notes: stepNotes,
-          completedAt: newStatus === "COMPLETED" ? new Date().toISOString() : null,
+          completedAt: newStatus === "COMPLETED"
+            ? (customCompletedAt || new Date()).toISOString()
+            : null,
         }),
       });
 
@@ -68,12 +88,88 @@ export function StepsTimeline({ steps, grievanceId, onStepUpdate }: StepsTimelin
       }
 
       toast.success("Step updated successfully");
-      onStepUpdate?.();
+      refreshData();
       setDialogOpen(false);
       setNotes("");
       setSelectedStep(null);
+      setCompletionDate(new Date());
     } catch (error) {
       toast.error("Failed to update step");
+    } finally {
+      setUpdatingStep(null);
+    }
+  };
+
+  const updateDeadline = async (stepId: string, newDeadline: Date) => {
+    setUpdatingStep(stepId);
+    try {
+      const response = await fetch(`/api/grievances/${grievanceId}/steps/${stepId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          deadline: newDeadline.toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update deadline");
+      }
+
+      toast.success("Deadline updated successfully");
+      refreshData();
+      setEditingDeadline(null);
+    } catch (error) {
+      toast.error("Failed to update deadline");
+    } finally {
+      setUpdatingStep(null);
+    }
+  };
+
+  const updateCompletionDate = async (stepId: string, newCompletionDate: Date) => {
+    setUpdatingStep(stepId);
+    try {
+      const response = await fetch(`/api/grievances/${grievanceId}/steps/${stepId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          completedAt: newCompletionDate.toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update completion date");
+      }
+
+      toast.success("Completion date updated successfully");
+      refreshData();
+      setEditingCompletionDate(null);
+    } catch (error) {
+      toast.error("Failed to update completion date");
+    } finally {
+      setUpdatingStep(null);
+    }
+  };
+
+  const resetStep = async (stepId: string) => {
+    setUpdatingStep(stepId);
+    try {
+      const response = await fetch(`/api/grievances/${grievanceId}/steps/${stepId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "PENDING",
+          completedAt: null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to reset step");
+      }
+
+      toast.success("Step reset successfully");
+      refreshData();
+    } catch (error) {
+      toast.error("Failed to reset step");
     } finally {
       setUpdatingStep(null);
     }
@@ -82,6 +178,7 @@ export function StepsTimeline({ steps, grievanceId, onStepUpdate }: StepsTimelin
   const openCompleteDialog = (step: GrievanceStep) => {
     setSelectedStep(step);
     setNotes(step.notes || "");
+    setCompletionDate(new Date());
     setDialogOpen(true);
   };
 
@@ -135,15 +232,99 @@ export function StepsTimeline({ steps, grievanceId, onStepUpdate }: StepsTimelin
                     </div>
 
                     <div className="mt-2 text-sm text-gray-500 space-y-1">
-                      {step.deadline && (
-                        <p>
-                          Deadline: {format(new Date(step.deadline), "MMM d, yyyy")}
-                        </p>
+                      {step.deadline ? (
+                        <div className="flex items-center gap-1">
+                          <span>Deadline: {format(new Date(step.deadline), "MMM d, yyyy")}</span>
+                          <Popover
+                            open={editingDeadline === step.id}
+                            onOpenChange={(open) => setEditingDeadline(open ? step.id : null)}
+                          >
+                            <PopoverTrigger asChild>
+                              <button
+                                className="inline-flex items-center justify-center rounded p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                                title="Edit deadline"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={new Date(step.deadline)}
+                                onSelect={(date) => {
+                                  if (date) {
+                                    updateDeadline(step.id, date);
+                                  }
+                                }}
+                                disabled={(date) => date < new Date("1900-01-01")}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-400">No deadline set</span>
+                          <Popover
+                            open={editingDeadline === step.id}
+                            onOpenChange={(open) => setEditingDeadline(open ? step.id : null)}
+                          >
+                            <PopoverTrigger asChild>
+                              <button
+                                className="inline-flex items-center justify-center rounded p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                                title="Set deadline"
+                              >
+                                <CalendarIcon className="h-3 w-3" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={undefined}
+                                onSelect={(date) => {
+                                  if (date) {
+                                    updateDeadline(step.id, date);
+                                  }
+                                }}
+                                disabled={(date) => date < new Date("1900-01-01")}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
                       )}
                       {step.completedAt && (
-                        <p>
-                          Completed: {format(new Date(step.completedAt), "MMM d, yyyy")}
-                        </p>
+                        <div className="flex items-center gap-1">
+                          <span>Completed: {format(new Date(step.completedAt), "MMM d, yyyy")}</span>
+                          <Popover
+                            open={editingCompletionDate === step.id}
+                            onOpenChange={(open) => setEditingCompletionDate(open ? step.id : null)}
+                          >
+                            <PopoverTrigger asChild>
+                              <button
+                                className="inline-flex items-center justify-center rounded p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                                title="Edit completion date"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={new Date(step.completedAt)}
+                                onSelect={(date) => {
+                                  if (date) {
+                                    updateCompletionDate(step.id, date);
+                                  }
+                                }}
+                                disabled={(date) =>
+                                  date > new Date() || date < new Date("1900-01-01")
+                                }
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
                       )}
                       {step.notes && (
                         <p className="italic">&quot;{step.notes}&quot;</p>
@@ -151,77 +332,129 @@ export function StepsTimeline({ steps, grievanceId, onStepUpdate }: StepsTimelin
                     </div>
 
                     {/* Action buttons */}
-                    {step.status !== "COMPLETED" && step.status !== "SKIPPED" && (
-                      <div className="mt-3 flex gap-2">
-                        {step.status === "PENDING" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateStepStatus(step.id, "IN_PROGRESS")}
-                            disabled={updatingStep === step.id}
-                          >
-                            {updatingStep === step.id && (
-                              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                            )}
-                            Start
-                          </Button>
-                        )}
-                        <Dialog open={dialogOpen && selectedStep?.id === step.id} onOpenChange={setDialogOpen}>
-                          <DialogTrigger asChild>
+                    <div className="mt-3 flex gap-2">
+                      {step.status !== "COMPLETED" && step.status !== "SKIPPED" && (
+                        <>
+                          {step.status === "PENDING" && (
                             <Button
                               size="sm"
-                              onClick={() => openCompleteDialog(step)}
+                              variant="outline"
+                              onClick={() => updateStepStatus(step.id, "IN_PROGRESS")}
                               disabled={updatingStep === step.id}
                             >
-                              Complete
+                              {updatingStep === step.id && (
+                                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                              )}
+                              Start
                             </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Complete Step {step.stepNumber}</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4 py-4">
-                              <div className="space-y-2">
-                                <Label>Notes (optional)</Label>
-                                <Textarea
-                                  value={notes}
-                                  onChange={(e) => setNotes(e.target.value)}
-                                  placeholder="Add any notes about this step..."
-                                  rows={4}
-                                />
+                          )}
+                          <Dialog open={dialogOpen && selectedStep?.id === step.id} onOpenChange={setDialogOpen}>
+                            <DialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                onClick={() => openCompleteDialog(step)}
+                                disabled={updatingStep === step.id}
+                              >
+                                Complete
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Complete Step {step.stepNumber}</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                  <Label>Completion Date</Label>
+                                  <p className="text-xs text-gray-500">
+                                    Set when this step was actually completed. Subsequent step deadlines will be calculated from this date.
+                                  </p>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        className={cn(
+                                          "w-full justify-start text-left font-normal",
+                                          !completionDate && "text-muted-foreground"
+                                        )}
+                                      >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {completionDate ? (
+                                          format(completionDate, "PPP")
+                                        ) : (
+                                          <span>Pick a date</span>
+                                        )}
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                      <Calendar
+                                        mode="single"
+                                        selected={completionDate}
+                                        onSelect={(date) => date && setCompletionDate(date)}
+                                        disabled={(date) =>
+                                          date > new Date() || date < new Date("1900-01-01")
+                                        }
+                                        initialFocus
+                                      />
+                                    </PopoverContent>
+                                  </Popover>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Notes (optional)</Label>
+                                  <Textarea
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
+                                    placeholder="Add any notes about this step..."
+                                    rows={4}
+                                  />
+                                </div>
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => setDialogOpen(false)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    onClick={() =>
+                                      updateStepStatus(step.id, "COMPLETED", notes, completionDate)
+                                    }
+                                    disabled={updatingStep === step.id}
+                                  >
+                                    {updatingStep === step.id && (
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    )}
+                                    Mark Complete
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  variant="outline"
-                                  onClick={() => setDialogOpen(false)}
-                                >
-                                  Cancel
-                                </Button>
-                                <Button
-                                  onClick={() =>
-                                    updateStepStatus(step.id, "COMPLETED", notes)
-                                  }
-                                  disabled={updatingStep === step.id}
-                                >
-                                  {updatingStep === step.id && (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  )}
-                                  Mark Complete
-                                </Button>
-                              </div>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
+                            </DialogContent>
+                          </Dialog>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => updateStepStatus(step.id, "SKIPPED")}
+                            disabled={updatingStep === step.id}
+                          >
+                            Skip
+                          </Button>
+                        </>
+                      )}
+                      {(step.status === "COMPLETED" || step.status === "SKIPPED") && (
                         <Button
                           size="sm"
-                          variant="ghost"
-                          onClick={() => updateStepStatus(step.id, "SKIPPED")}
+                          variant="outline"
+                          onClick={() => resetStep(step.id)}
                           disabled={updatingStep === step.id}
                         >
-                          Skip
+                          {updatingStep === step.id ? (
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          ) : (
+                            <RotateCcw className="mr-2 h-3 w-3" />
+                          )}
+                          Reset
                         </Button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

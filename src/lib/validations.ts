@@ -17,18 +17,30 @@ export const registerSchema = z.object({
   path: ["confirmPassword"],
 });
 
+// Helper to parse date from string or Date
+const dateField = z.union([
+  z.date(),
+  z.string().transform((val) => val ? new Date(val) : null),
+  z.null(),
+]).optional().nullable();
+
 // Member schemas
 export const memberSchema = z.object({
+  memberId: z.string().optional().or(z.literal("")),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  zipCode: z.string().optional(),
-  hireDate: z.date().optional().nullable(),
-  departmentId: z.string().optional().nullable(),
+  homePhone: z.string().optional().or(z.literal("")),
+  cellPhone: z.string().optional().or(z.literal("")),
+  address: z.string().optional().or(z.literal("")),
+  city: z.string().optional().or(z.literal("")),
+  state: z.string().optional().or(z.literal("")),
+  zipCode: z.string().optional().or(z.literal("")),
+  dateOfBirth: dateField,
+  hireDate: dateField,
+  jobTitle: z.string().optional().or(z.literal("")),
+  workLocation: z.string().optional().or(z.literal("")),
+  departmentId: z.string().optional().nullable().or(z.literal("")),
   status: z.enum(["MEMBER", "NON_MEMBER", "SEVERED"]),
   employmentType: z.enum(["FULL_TIME", "PART_TIME", "TEMPORARY", "SEASONAL"]).optional().nullable(),
   customFields: z.record(z.string(), z.any()).optional(),
@@ -36,12 +48,16 @@ export const memberSchema = z.object({
 
 // Grievance schemas
 export const grievanceSchema = z.object({
-  memberId: z.string().optional().nullable(),
-  representativeId: z.string().optional().nullable(),
-  departmentId: z.string().optional().nullable(),
+  memberId: z.string().optional().nullable().or(z.literal("")),
+  representativeId: z.string().optional().nullable().or(z.literal("")),
+  departmentId: z.string().optional().nullable().or(z.literal("")),
   description: z.string().min(10, "Description must be at least 10 characters"),
+  reliefRequested: z.string().optional().nullable().or(z.literal("")),
+  memberJobTitle: z.string().optional().nullable().or(z.literal("")),
+  commissionerName: z.string().optional().nullable().or(z.literal("")),
+  contractArticleIds: z.array(z.string()).optional(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
-  filingDate: z.date(),
+  filingDate: z.union([z.date(), z.string().transform((val) => new Date(val))]),
   customFields: z.record(z.string(), z.any()).optional(),
 });
 
@@ -50,6 +66,7 @@ export const grievanceUpdateSchema = grievanceSchema.extend({
   outcome: z.enum(["WON", "LOST", "SETTLED", "WITHDRAWN", "PENDING_ARBITRATION"]).optional().nullable(),
   outcomeNotes: z.string().optional().nullable(),
   settlementAmount: z.number().optional().nullable(),
+  reliefRequested: z.string().optional().nullable().or(z.literal("")),
 });
 
 // Grievance step schema
@@ -57,7 +74,7 @@ export const grievanceStepSchema = z.object({
   stepNumber: z.number().int().positive(),
   name: z.string().min(1, "Step name is required"),
   description: z.string().optional(),
-  deadline: z.date().optional().nullable(),
+  deadline: dateField,
   status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "OVERDUE", "SKIPPED"]),
   notes: z.string().optional(),
 });
@@ -77,7 +94,8 @@ export const messageSchema = z.object({
 // Department schema
 export const departmentSchema = z.object({
   name: z.string().min(1, "Department name is required"),
-  code: z.string().optional(),
+  code: z.string().optional().or(z.literal("")),
+  commissionerName: z.string().optional().or(z.literal("")),
   isActive: z.boolean().default(true),
 });
 
@@ -93,9 +111,9 @@ export const stepTemplateSchema = z.object({
 // Contract schema
 export const contractSchema = z.object({
   name: z.string().min(1, "Contract name is required"),
-  effectiveDate: z.date(),
-  expirationDate: z.date(),
-  fileUrl: z.string().url().optional().nullable(),
+  effectiveDate: z.union([z.date(), z.string().transform((val) => new Date(val))]),
+  expirationDate: z.union([z.date(), z.string().transform((val) => new Date(val))]),
+  fileUrl: z.string().url().optional().nullable().or(z.literal("")),
   isActive: z.boolean().default(true),
 });
 

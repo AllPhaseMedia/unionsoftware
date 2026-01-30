@@ -1,30 +1,35 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GrievanceForm } from "@/components/grievances/grievance-form";
 import { toast } from "sonner";
 import type { GrievanceInput } from "@/lib/validations";
-import type { Department, Member, User } from "@/types";
+import type { Department, Member, User, ContractWithArticles } from "@/types";
 
 export default function NewGrievancePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preselectedMemberId = searchParams.get("memberId");
   const [isLoading, setIsLoading] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [contracts, setContracts] = useState<ContractWithArticles[]>([]);
 
   useEffect(() => {
     Promise.all([
       fetch("/api/members").then((res) => res.json()),
       fetch("/api/users").then((res) => res.json()),
       fetch("/api/departments").then((res) => res.json()),
+      fetch("/api/contracts?includeArticles=true").then((res) => res.json()),
     ])
-      .then(([membersData, usersData, deptsData]) => {
+      .then(([membersData, usersData, deptsData, contractsData]) => {
         setMembers(membersData.data || []);
         setUsers(usersData.data || []);
         setDepartments(deptsData.data || []);
+        setContracts(contractsData.data || []);
       })
       .catch(console.error);
   }, []);
@@ -65,8 +70,10 @@ export default function NewGrievancePage() {
             members={members}
             users={users}
             departments={departments}
+            contracts={contracts}
             onSubmit={handleSubmit}
             isLoading={isLoading}
+            preselectedMemberId={preselectedMemberId || undefined}
           />
         </CardContent>
       </Card>

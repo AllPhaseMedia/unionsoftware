@@ -37,6 +37,7 @@ export class MemberService {
           { firstName: { contains: filters.search, mode: "insensitive" } },
           { lastName: { contains: filters.search, mode: "insensitive" } },
           { email: { contains: filters.search, mode: "insensitive" } },
+          { memberId: { contains: filters.search, mode: "insensitive" } },
         ],
       }),
     };
@@ -63,15 +64,20 @@ export class MemberService {
 
   static async create(
     data: {
+      memberId?: string | null;
       firstName: string;
       lastName: string;
       email?: string | null;
-      phone?: string | null;
+      homePhone?: string | null;
+      cellPhone?: string | null;
       address?: string | null;
       city?: string | null;
       state?: string | null;
       zipCode?: string | null;
+      dateOfBirth?: Date | null;
       hireDate?: Date | null;
+      jobTitle?: string | null;
+      workLocation?: string | null;
       departmentId?: string | null;
       status: "MEMBER" | "NON_MEMBER" | "SEVERED";
       employmentType?: "FULL_TIME" | "PART_TIME" | "TEMPORARY" | "SEASONAL" | null;
@@ -81,16 +87,21 @@ export class MemberService {
   ) {
     return prisma.member.create({
       data: {
+        memberId: data.memberId || null,
         firstName: data.firstName,
         lastName: data.lastName,
-        email: data.email,
-        phone: data.phone,
-        address: data.address,
-        city: data.city,
-        state: data.state,
-        zipCode: data.zipCode,
+        email: data.email || null,
+        homePhone: data.homePhone || null,
+        cellPhone: data.cellPhone || null,
+        address: data.address || null,
+        city: data.city || null,
+        state: data.state || null,
+        zipCode: data.zipCode || null,
+        dateOfBirth: data.dateOfBirth,
         hireDate: data.hireDate,
-        departmentId: data.departmentId,
+        jobTitle: data.jobTitle || null,
+        workLocation: data.workLocation || null,
+        departmentId: data.departmentId || null,
         status: data.status,
         employmentType: data.employmentType,
         customFields: data.customFields as object | undefined,
@@ -104,15 +115,20 @@ export class MemberService {
     id: string,
     organizationId: string,
     data: Partial<{
+      memberId: string | null;
       firstName: string;
       lastName: string;
       email: string | null;
-      phone: string | null;
+      homePhone: string | null;
+      cellPhone: string | null;
       address: string | null;
       city: string | null;
       state: string | null;
       zipCode: string | null;
+      dateOfBirth: Date | null;
       hireDate: Date | null;
+      jobTitle: string | null;
+      workLocation: string | null;
       departmentId: string | null;
       status: "MEMBER" | "NON_MEMBER" | "SEVERED";
       employmentType: "FULL_TIME" | "PART_TIME" | "TEMPORARY" | "SEASONAL" | null;

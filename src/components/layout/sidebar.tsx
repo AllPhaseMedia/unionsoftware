@@ -11,144 +11,157 @@ import {
   Settings,
   ChevronDown,
   Building2,
-  ListChecks,
   FormInput,
   FileType,
   Mail,
-  FileCheck,
   UserCog,
+  Palette,
+  Briefcase,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-interface NavItem {
-  title: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  children?: { title: string; href: string; icon: React.ComponentType<{ className?: string }> }[];
+interface AppearanceSettings {
+  logo_url?: string;
+  logo_height?: string;
+  organization_name?: string;
+  menu_bg_color?: string;
+  menu_text_color?: string;
+  menu_accent_color?: string;
 }
-
-const navItems: NavItem[] = [
-  {
-    title: "Dashboard",
-    href: "/",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Grievances",
-    href: "/grievances",
-    icon: FileText,
-  },
-  {
-    title: "Members",
-    href: "/members",
-    icon: Users,
-  },
-  {
-    title: "Reports",
-    href: "/reports",
-    icon: BarChart3,
-  },
-  {
-    title: "Settings",
-    href: "/settings",
-    icon: Settings,
-    children: [
-      { title: "Departments", href: "/settings/departments", icon: Building2 },
-      { title: "Workflow Steps", href: "/settings/steps", icon: ListChecks },
-      { title: "Custom Fields", href: "/settings/custom-fields", icon: FormInput },
-      { title: "PDF Templates", href: "/settings/pdf-templates", icon: FileType },
-      { title: "Email Templates", href: "/settings/email-templates", icon: Mail },
-      { title: "Contracts", href: "/settings/contracts", icon: FileCheck },
-      { title: "Users", href: "/settings/users", icon: UserCog },
-    ],
-  },
-];
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [expandedItems, setExpandedItems] = useState<string[]>(["/settings"]);
+  const [settingsExpanded, setSettingsExpanded] = useState(true);
+  const [appearance, setAppearance] = useState<AppearanceSettings>({});
 
-  const toggleExpanded = (href: string) => {
-    setExpandedItems((prev) =>
-      prev.includes(href)
-        ? prev.filter((item) => item !== href)
-        : [...prev, href]
-    );
-  };
+  useEffect(() => {
+    const fetchAppearance = async () => {
+      try {
+        const res = await fetch("/api/settings/appearance");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.data) {
+            setAppearance(data.data);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch appearance settings:", error);
+      }
+    };
+    fetchAppearance();
+  }, []);
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
   };
 
+  const bgColor = appearance.menu_bg_color || "#111827";
+  const textColor = appearance.menu_text_color || "#f9fafb";
+  const accentColor = appearance.menu_accent_color || "#3b82f6";
+  const logoHeight = parseInt(appearance.logo_height || "40", 10);
+  const organizationName = appearance.organization_name || "UnionSoftware";
+
+  const mainNavItems = [
+    { title: "Dashboard", href: "/", icon: LayoutDashboard },
+    { title: "Grievances", href: "/grievances", icon: FileText },
+    { title: "Members", href: "/members", icon: Users },
+    { title: "Reports", href: "/reports", icon: BarChart3 },
+  ];
+
+  const settingsItems = [
+    { title: "Appearance", href: "/settings/appearance", icon: Palette },
+    { title: "Departments", href: "/settings/departments", icon: Building2 },
+    { title: "Users", href: "/settings/users", icon: UserCog },
+    { title: "Grievance Settings", href: "/settings/grievance", icon: Briefcase },
+    { title: "Custom Fields", href: "/settings/custom-fields", icon: FormInput },
+    { title: "PDF Templates", href: "/settings/pdf-templates", icon: FileType },
+    { title: "Email Templates", href: "/settings/email-templates", icon: Mail },
+  ];
+
   return (
-    <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-gray-900 text-white">
-      <div className="flex items-center h-16 px-6 border-b border-gray-800">
-        <Link href="/" className="text-xl font-bold">
-          UnionSoftware
+    <aside
+      className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0"
+      style={{ backgroundColor: bgColor, color: textColor }}
+    >
+      <div
+        className="flex items-center justify-center px-4 py-4 border-b shrink-0"
+        style={{ borderColor: `${textColor}20`, minHeight: "64px" }}
+      >
+        <Link href="/" className="flex items-center justify-center">
+          {appearance.logo_url ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={appearance.logo_url}
+              alt="Logo"
+              style={{ height: `${logoHeight}px`, width: "auto", maxWidth: "100%" }}
+              className="object-contain"
+            />
+          ) : (
+            <span className="text-xl font-bold text-center" style={{ color: textColor }}>
+              {organizationName}
+            </span>
+          )}
         </Link>
       </div>
       <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
-          <div key={item.href}>
-            {item.children ? (
-              <>
-                <button
-                  onClick={() => toggleExpanded(item.href)}
-                  className={cn(
-                    "flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                    isActive(item.href)
-                      ? "bg-gray-800 text-white"
-                      : "text-gray-300 hover:bg-gray-800 hover:text-white"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <item.icon className="h-5 w-5" />
-                    {item.title}
-                  </div>
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 transition-transform",
-                      expandedItems.includes(item.href) && "rotate-180"
-                    )}
-                  />
-                </button>
-                {expandedItems.includes(item.href) && (
-                  <div className="ml-4 mt-1 space-y-1">
-                    {item.children.map((child) => (
-                      <Link
-                        key={child.href}
-                        href={child.href}
-                        className={cn(
-                          "flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
-                          isActive(child.href)
-                            ? "bg-gray-800 text-white"
-                            : "text-gray-400 hover:bg-gray-800 hover:text-white"
-                        )}
-                      >
-                        <child.icon className="h-4 w-4" />
-                        {child.title}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <Link
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                  isActive(item.href)
-                    ? "bg-gray-800 text-white"
-                    : "text-gray-300 hover:bg-gray-800 hover:text-white"
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.title}
-              </Link>
-            )}
-          </div>
+        {/* Main Navigation */}
+        {mainNavItems.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors"
+            style={{
+              backgroundColor: isActive(item.href) ? accentColor : "transparent",
+              color: textColor,
+            }}
+          >
+            <item.icon className="h-5 w-5" />
+            {item.title}
+          </Link>
         ))}
+
+        {/* Settings Section */}
+        <div className="pt-2">
+          <button
+            onClick={() => setSettingsExpanded(!settingsExpanded)}
+            className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-md transition-colors"
+            style={{
+              backgroundColor: isActive("/settings") ? `${textColor}15` : "transparent",
+              color: textColor,
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <Settings className="h-5 w-5" />
+              Settings
+            </div>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 transition-transform",
+                settingsExpanded && "rotate-180"
+              )}
+            />
+          </button>
+
+          {settingsExpanded && (
+            <div className="mt-1 space-y-1">
+              {settingsItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center gap-3 ml-4 px-3 py-2 text-sm rounded-md transition-colors"
+                  style={{
+                    backgroundColor: isActive(item.href) ? accentColor : "transparent",
+                    color: isActive(item.href) ? textColor : `${textColor}99`,
+                  }}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.title}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </nav>
     </aside>
   );

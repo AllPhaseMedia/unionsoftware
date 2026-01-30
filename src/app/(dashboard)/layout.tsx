@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
+import { CustomCodeInjector } from "@/components/layout/custom-code-injector";
 import { Providers } from "@/components/providers";
 import type { SessionUser } from "@/types";
 
@@ -50,6 +51,7 @@ export default async function DashboardLayout({
 
   return (
     <Providers user={sessionUser}>
+      <CustomCodeInjector />
       <div className="min-h-screen bg-gray-50">
         <Sidebar />
         <div className="lg:pl-64">

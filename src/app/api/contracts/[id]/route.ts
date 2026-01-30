@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
-import { memberSchema } from "@/lib/validations";
+import { contractSchema } from "@/lib/validations";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -27,35 +27,27 @@ export async function GET(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const member = await prisma.member.findFirst({
+    const contract = await prisma.contract.findFirst({
       where: {
         id,
         organizationId: dbUser.organizationId,
       },
       include: {
-        department: true,
-        grievances: {
-          orderBy: { createdAt: "desc" },
-        },
-        notes: {
-          include: { user: true },
-          orderBy: { createdAt: "desc" },
-        },
-        documents: {
-          orderBy: { uploadedAt: "desc" },
+        articles: {
+          orderBy: { articleNumber: "asc" },
         },
       },
     });
 
-    if (!member) {
-      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+    if (!contract) {
+      return NextResponse.json({ error: "Contract not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data: member });
+    return NextResponse.json({ success: true, data: contract });
   } catch (error) {
-    console.error("Error fetching member:", error);
+    console.error("Error fetching contract:", error);
     return NextResponse.json(
-      { error: "Failed to fetch member" },
+      { error: "Failed to fetch contract" },
       { status: 500 }
     );
   }
@@ -77,58 +69,49 @@ export async function PUT(request: Request, { params }: RouteParams) {
       where: { supabaseUserId: authUser.id },
     });
 
-    if (!dbUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (!dbUser || dbUser.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    // Verify member belongs to the organization
-    const existingMember = await prisma.member.findFirst({
+    // Verify contract belongs to organization
+    const existingContract = await prisma.contract.findFirst({
       where: {
         id,
         organizationId: dbUser.organizationId,
       },
     });
 
-    if (!existingMember) {
-      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+    if (!existingContract) {
+      return NextResponse.json({ error: "Contract not found" }, { status: 404 });
     }
 
     const body = await request.json();
-    const validatedData = memberSchema.parse(body);
+    const validatedData = contractSchema.parse(body);
 
-    const member = await prisma.member.update({
+    const contract = await prisma.contract.update({
       where: { id },
       data: {
-        memberId: validatedData.memberId || null,
-        firstName: validatedData.firstName,
-        lastName: validatedData.lastName,
-        email: validatedData.email || null,
-        homePhone: validatedData.homePhone || null,
-        cellPhone: validatedData.cellPhone || null,
-        address: validatedData.address || null,
-        city: validatedData.city || null,
-        state: validatedData.state || null,
-        zipCode: validatedData.zipCode || null,
-        dateOfBirth: validatedData.dateOfBirth || null,
-        hireDate: validatedData.hireDate || null,
-        jobTitle: validatedData.jobTitle || null,
-        workLocation: validatedData.workLocation || null,
-        departmentId: validatedData.departmentId || null,
-        status: validatedData.status,
-        employmentType: validatedData.employmentType || null,
-        customFields: validatedData.customFields as object | undefined,
+        name: validatedData.name,
+        effectiveDate: validatedData.effectiveDate,
+        expirationDate: validatedData.expirationDate,
+        fileUrl: validatedData.fileUrl || null,
+        isActive: validatedData.isActive,
       },
-      include: { department: true },
+      include: {
+        articles: {
+          orderBy: { articleNumber: "asc" },
+        },
+      },
     });
 
-    return NextResponse.json({ success: true, data: member });
+    return NextResponse.json({ success: true, data: contract });
   } catch (error) {
-    console.error("Error updating member:", error);
+    console.error("Error updating contract:", error);
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json({ error: "Invalid data" }, { status: 400 });
     }
     return NextResponse.json(
-      { error: "Failed to update member" },
+      { error: "Failed to update contract" },
       { status: 500 }
     );
   }
@@ -154,27 +137,42 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    // Verify member belongs to the organization
-    const existingMember = await prisma.member.findFirst({
+    // Verify contract belongs to organization
+    const existingContract = await prisma.contract.findFirst({
       where: {
         id,
         organizationId: dbUser.organizationId,
       },
     });
 
-    if (!existingMember) {
-      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+    if (!existingContract) {
+      return NextResponse.json({ error: "Contract not found" }, { status: 404 });
     }
 
-    await prisma.member.delete({
-      where: { id },
+    // Check if contract articles are used in any grievances
+    const violationsCount = await prisma.grievanceContractViolation.count({
+      where: {
+        contractArticle: {
+          contractId: id,
+        },
+      },
     });
+
+    if (violationsCount > 0) {
+      return NextResponse.json(
+        { error: "Cannot delete contract with articles referenced in grievances" },
+        { status: 400 }
+      );
+    }
+
+    // Delete contract (cascades to articles)
+    await prisma.contract.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting member:", error);
+    console.error("Error deleting contract:", error);
     return NextResponse.json(
-      { error: "Failed to delete member" },
+      { error: "Failed to delete contract" },
       { status: 500 }
     );
   }

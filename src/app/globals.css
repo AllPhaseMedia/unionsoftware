@@ -122,4 +122,26 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Cursor pointer for interactive elements */
+  button,
+  [role="button"],
+  a,
+  select,
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="file"],
+  label[for],
+  [data-clickable],
+  .cursor-pointer {
+    cursor: pointer;
+  }
+
+  /* Disabled elements */
+  button:disabled,
+  [role="button"][aria-disabled="true"],
+  input:disabled,
+  select:disabled {
+    cursor: not-allowed;
+  }
 }

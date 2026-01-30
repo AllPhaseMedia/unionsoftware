@@ -13,13 +13,14 @@ import {
   Calendar,
   User,
   Building2,
-  FileText,
-  StickyNote,
   AlertTriangle,
   DollarSign,
 } from "lucide-react";
 import { StepsTimeline } from "@/components/grievances/steps-timeline";
-import { MessagesSection } from "@/components/grievances/messages-section";
+import { GrievanceDiscussion } from "@/components/grievances/grievance-discussion";
+import { DocumentsSection } from "@/components/grievances/documents-section";
+import { NotesSection } from "@/components/grievances/notes-section";
+import { PdfGenerateButton } from "@/components/grievances/pdf-generate-button";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -158,14 +159,28 @@ export default async function GrievanceDetailPage({ params }: PageProps) {
             </CardContent>
           </Card>
 
+          {/* Relief Requested */}
+          {grievance.reliefRequested && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Relief Requested</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-700 whitespace-pre-wrap">
+                  {grievance.reliefRequested}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Steps Timeline */}
           <StepsTimeline
             steps={grievance.steps}
             grievanceId={grievance.id}
           />
 
-          {/* Messages */}
-          <MessagesSection
+          {/* Discussion */}
+          <GrievanceDiscussion
             messages={grievance.messages}
             grievanceId={grievance.id}
             currentUserId={dbUser.id}
@@ -211,6 +226,26 @@ export default async function GrievanceDetailPage({ params }: PageProps) {
                   <div>
                     <p className="text-sm text-gray-500">Department</p>
                     <p>{grievance.department.name}</p>
+                  </div>
+                </div>
+              )}
+
+              {grievance.memberJobTitle && (
+                <div className="flex items-start gap-3">
+                  <User className="h-4 w-4 text-gray-400 mt-1" />
+                  <div>
+                    <p className="text-sm text-gray-500">Member Job Title</p>
+                    <p>{grievance.memberJobTitle}</p>
+                  </div>
+                </div>
+              )}
+
+              {grievance.commissionerName && (
+                <div className="flex items-start gap-3">
+                  <User className="h-4 w-4 text-gray-400 mt-1" />
+                  <div>
+                    <p className="text-sm text-gray-500">Commissioner</p>
+                    <p>{grievance.commissionerName}</p>
                   </div>
                 </div>
               )}
@@ -286,76 +321,19 @@ export default async function GrievanceDetailPage({ params }: PageProps) {
           )}
 
           {/* Documents */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Documents ({grievance.documents.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {grievance.documents.length === 0 ? (
-                <p className="text-gray-500 text-sm">No documents attached.</p>
-              ) : (
-                <div className="space-y-2">
-                  {grievance.documents.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="flex items-center justify-between p-2 border rounded"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <FileText className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                        <span className="text-sm truncate">{doc.fileName}</span>
-                      </div>
-                      <Button variant="ghost" size="sm">
-                        View
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <Button variant="outline" className="w-full mt-4" size="sm">
-                Upload Document
-              </Button>
-            </CardContent>
-          </Card>
+          <DocumentsSection
+            documents={grievance.documents}
+            grievanceId={grievance.id}
+          />
+
+          {/* PDF Generation */}
+          <PdfGenerateButton grievanceId={grievance.id} />
 
           {/* Notes */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <StickyNote className="h-4 w-4" />
-                Notes ({grievance.notes.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {grievance.notes.length === 0 ? (
-                <p className="text-gray-500 text-sm">No notes yet.</p>
-              ) : (
-                <div className="space-y-3">
-                  {grievance.notes.slice(0, 3).map((note) => (
-                    <div key={note.id} className="text-sm">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium">{note.user.name}</span>
-                        {note.isInternal && (
-                          <Badge variant="outline" className="text-xs">
-                            Internal
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-gray-600 line-clamp-2">{note.content}</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {format(new Date(note.createdAt), "MMM d 'at' h:mm a")}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <Button variant="outline" className="w-full mt-4" size="sm">
-                Add Note
-              </Button>
-            </CardContent>
-          </Card>
+          <NotesSection
+            notes={grievance.notes}
+            grievanceId={grievance.id}
+          />
 
           {/* Metadata */}
           <Card>

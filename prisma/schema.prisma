@@ -26,6 +26,7 @@ model Organization {
   pdfTemplates    PdfTemplate[]
   emailTemplates  EmailTemplate[]
   systemSettings  SystemSetting[]
+  textSnippets    TextSnippet[]
 
   @@map("organizations")
 }
@@ -63,15 +64,20 @@ enum UserRole {
 model Member {
   id              String           @id @default(uuid())
   organizationId  String           @map("organization_id")
+  memberId        String?          @map("member_id")
   firstName       String           @map("first_name")
   lastName        String           @map("last_name")
   email           String?
-  phone           String?
+  homePhone       String?          @map("home_phone")
+  cellPhone       String?          @map("cell_phone")
   address         String?
   city            String?
   state           String?
   zipCode         String?          @map("zip_code")
+  dateOfBirth     DateTime?        @map("date_of_birth")
   hireDate        DateTime?        @map("hire_date")
+  jobTitle        String?          @map("job_title")
+  workLocation    String?          @map("work_location")
   departmentId    String?          @map("department_id")
   status          MemberStatus     @default(MEMBER)
   employmentType  EmploymentType?  @map("employment_type")
@@ -110,6 +116,9 @@ model Grievance {
   createdById         String          @map("created_by_id")
   departmentId        String?         @map("department_id")
   description         String
+  reliefRequested     String?         @map("relief_requested")
+  memberJobTitle      String?         @map("member_job_title")
+  commissionerName    String?         @map("commissioner_name")
   status              GrievanceStatus @default(OPEN)
   priority            Priority        @default(MEDIUM)
   outcome             GrievanceOutcome?
@@ -204,13 +213,14 @@ model StepTemplate {
 }
 
 model Department {
-  id              String   @id @default(uuid())
-  organizationId  String   @map("organization_id")
-  name            String
-  code            String?
-  isActive        Boolean  @default(true) @map("is_active")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(uuid())
+  organizationId    String   @map("organization_id")
+  name              String
+  code              String?
+  commissionerName  String?  @map("commissioner_name")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   organization    Organization @relation(fields: [organizationId], references: [id])
   members         Member[]
@@ -450,6 +460,26 @@ model SystemSetting {
 
   @@unique([key, organizationId])
   @@map("system_settings")
+}
+
+model TextSnippet {
+  id              String        @id @default(uuid())
+  organizationId  String        @map("organization_id")
+  name            String
+  content         String
+  category        SnippetCategory
+  isActive        Boolean       @default(true) @map("is_active")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("text_snippets")
+}
+
+enum SnippetCategory {
+  DESCRIPTION
+  RELIEF_REQUESTED
 }
 
 model AuditLog {

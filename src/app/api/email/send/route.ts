@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
 import { format } from "date-fns";
+import nodemailer from "nodemailer";
 
 // Template variable replacements
 function replaceTemplateVariables(template: string, data: Record<string, unknown>): string {
@@ -27,6 +28,60 @@ function replaceTemplateVariables(template: string, data: Record<string, unknown
   });
 
   return result;
+}
+
+// Get SMTP settings for organization
+async function getSmtpSettings(organizationId: string) {
+  const settings = await prisma.systemSetting.findMany({
+    where: {
+      organizationId,
+      key: {
+        in: [
+          "smtp_host",
+          "smtp_port",
+          "smtp_secure",
+          "smtp_user",
+          "smtp_password",
+          "smtp_from_email",
+          "smtp_from_name",
+          "smtp_enabled",
+        ],
+      },
+    },
+  });
+
+  const settingsMap: Record<string, string> = {};
+  for (const setting of settings) {
+    settingsMap[setting.key] = setting.value;
+  }
+
+  return settingsMap;
+}
+
+// Create nodemailer transporter
+function createTransporter(settings: Record<string, string>) {
+  const port = parseInt(settings.smtp_port || "587", 10);
+  const secure = settings.smtp_secure === "ssl";
+
+  const config: nodemailer.TransportOptions = {
+    host: settings.smtp_host,
+    port,
+    secure,
+    auth:
+      settings.smtp_user && settings.smtp_password
+        ? {
+            user: settings.smtp_user,
+            pass: settings.smtp_password,
+          }
+        : undefined,
+  } as nodemailer.TransportOptions;
+
+  // Add TLS options for non-SSL connections
+  if (!secure && settings.smtp_secure === "tls") {
+    (config as Record<string, unknown>).requireTLS = true;
+  }
+
+  return nodemailer.createTransport(config);
 }
 
 export async function POST(request: Request) {
@@ -141,14 +196,48 @@ export async function POST(request: Request) {
     const finalSubject = replaceTemplateVariables(subject, templateData);
     const finalBody = replaceTemplateVariables(emailBody, templateData);
 
-    // For now, we'll store the email as a log and return success
-    // In production, you would integrate with an email service like:
-    // - Resend (resend.com)
-    // - SendGrid
-    // - AWS SES
-    // - Nodemailer with SMTP
+    // Get SMTP settings
+    const smtpSettings = await getSmtpSettings(dbUser.organizationId);
+    const emailEnabled = smtpSettings.smtp_enabled === "true";
 
-    // Create an audit log of the email sent
+    let emailSent = false;
+    let errorMessage = "";
+
+    // Try to send email if SMTP is configured and enabled
+    if (emailEnabled && smtpSettings.smtp_host) {
+      try {
+        const transporter = createTransporter(smtpSettings);
+
+        const fromName = smtpSettings.smtp_from_name || dbUser.organization.name;
+        const fromEmail = smtpSettings.smtp_from_email || smtpSettings.smtp_user;
+
+        // Convert plain text body to simple HTML
+        const htmlBody = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            ${finalBody.split("\n").map((line) => (line.trim() ? `<p>${line}</p>` : "<br>")).join("")}
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #666; font-size: 12px;">
+              Sent by ${dbUser.name} via ${dbUser.organization.name}
+            </p>
+          </div>
+        `;
+
+        await transporter.sendMail({
+          from: `"${fromName}" <${fromEmail}>`,
+          to,
+          subject: finalSubject,
+          text: finalBody,
+          html: htmlBody,
+        });
+
+        emailSent = true;
+      } catch (err) {
+        console.error("Error sending email via SMTP:", err);
+        errorMessage = err instanceof Error ? err.message : "Unknown error";
+      }
+    }
+
+    // Create an audit log of the email
     await prisma.auditLog.create({
       data: {
         entityType: grievanceId ? "grievance" : memberId ? "member" : "email",
@@ -162,31 +251,46 @@ export async function POST(request: Request) {
           body: finalBody,
           templateId: templateId || null,
           sentAt: new Date().toISOString(),
+          delivered: emailSent,
+          error: errorMessage || undefined,
         },
       },
     });
 
-    // TODO: Integrate with actual email service
-    // Example with Resend:
-    // const resend = new Resend(process.env.RESEND_API_KEY);
-    // await resend.emails.send({
-    //   from: 'noreply@yourdomain.com',
-    //   to,
-    //   subject: finalSubject,
-    //   text: finalBody,
-    // });
-
-    console.log("Email would be sent:", { to, subject: finalSubject, body: finalBody });
-
-    return NextResponse.json({
-      success: true,
-      message: "Email logged successfully. Configure email service for actual sending.",
-      data: {
-        to,
-        subject: finalSubject,
-        preview: finalBody.substring(0, 200),
-      },
-    });
+    if (emailSent) {
+      return NextResponse.json({
+        success: true,
+        message: "Email sent successfully",
+        data: {
+          to,
+          subject: finalSubject,
+          preview: finalBody.substring(0, 200),
+        },
+      });
+    } else if (!emailEnabled) {
+      return NextResponse.json({
+        success: true,
+        message: "Email logged. Enable SMTP in Settings > Email Settings to send emails.",
+        data: {
+          to,
+          subject: finalSubject,
+          preview: finalBody.substring(0, 200),
+          warning: "Email not sent - SMTP not enabled",
+        },
+      });
+    } else {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Failed to send email: ${errorMessage}`,
+          data: {
+            to,
+            subject: finalSubject,
+          },
+        },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error("Error sending email:", error);
     return NextResponse.json(

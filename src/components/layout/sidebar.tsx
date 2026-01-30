@@ -17,6 +17,7 @@ import {
   UserCog,
   Palette,
   Briefcase,
+  Send,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -63,6 +64,7 @@ export function Sidebar({ appearance = {} }: SidebarProps) {
     { title: "Custom Fields", href: "/settings/custom-fields", icon: FormInput },
     { title: "PDF Templates", href: "/settings/pdf-templates", icon: FileType },
     { title: "Email Templates", href: "/settings/email-templates", icon: Mail },
+    { title: "Email Settings", href: "/settings/email", icon: Send },
   ];
 
   return (

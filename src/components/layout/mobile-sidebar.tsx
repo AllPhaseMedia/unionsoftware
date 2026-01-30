@@ -17,6 +17,7 @@ import {
   UserCog,
   Palette,
   Briefcase,
+  Send,
 } from "lucide-react";
 import { useState } from "react";
 import { SheetClose } from "@/components/ui/sheet";
@@ -64,6 +65,7 @@ export function MobileSidebar({ appearance = {} }: MobileSidebarProps) {
     { title: "Custom Fields", href: "/settings/custom-fields", icon: FormInput },
     { title: "PDF Templates", href: "/settings/pdf-templates", icon: FileType },
     { title: "Email Templates", href: "/settings/email-templates", icon: Mail },
+    { title: "Email Settings", href: "/settings/email", icon: Send },
   ];
 
   return (

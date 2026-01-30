@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     console.error("Error creating member:", error);
     if (error instanceof ZodError) {
       return NextResponse.json(
-        { error: "Invalid data", details: error.errors },
+        { error: "Invalid data", details: error.issues },
         { status: 400 }
       );
     }

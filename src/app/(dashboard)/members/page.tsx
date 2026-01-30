@@ -31,7 +31,13 @@ import {
 import { Plus, Search, Settings2, ChevronLeft, ChevronRight, Loader2, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuickNote } from "@/components/ui/quick-note";
-import type { Member, Department } from "@/types";
+import type { Department } from "@/types";
+import type { Member } from "@prisma/client";
+
+// Extended member type with department relation
+type MemberWithDepartment = Member & {
+  department?: { id: string; name: string } | null;
+};
 
 // Format date as M/D/YYYY
 function formatDate(date: string | Date | null): string {
@@ -49,7 +55,7 @@ function formatPhone(phone: string | null): string {
 interface Column {
   id: string;
   label: string;
-  accessor: (member: Member) => string;
+  accessor: (member: MemberWithDepartment) => string;
   locked?: boolean;
 }
 
@@ -78,7 +84,7 @@ const ALL_COLUMNS: Column[] = [
 const DEFAULT_VISIBLE_COLUMNS = ["name", "memberId", "email", "cellPhone", "department", "status"];
 
 export default function MembersPage() {
-  const [members, setMembers] = useState<Member[]>([]);
+  const [members, setMembers] = useState<MemberWithDepartment[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [total, setTotal] = useState(0);

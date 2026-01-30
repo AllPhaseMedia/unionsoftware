@@ -18,7 +18,7 @@ import {
   Palette,
   Briefcase,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { SheetClose } from "@/components/ui/sheet";
 
 interface AppearanceSettings {
@@ -30,27 +30,13 @@ interface AppearanceSettings {
   menu_accent_color?: string;
 }
 
-export function MobileSidebar() {
+interface MobileSidebarProps {
+  appearance?: AppearanceSettings;
+}
+
+export function MobileSidebar({ appearance = {} }: MobileSidebarProps) {
   const pathname = usePathname();
   const [settingsExpanded, setSettingsExpanded] = useState(true);
-  const [appearance, setAppearance] = useState<AppearanceSettings>({});
-
-  useEffect(() => {
-    const fetchAppearance = async () => {
-      try {
-        const res = await fetch("/api/settings/appearance");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && data.data) {
-            setAppearance(data.data);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch appearance settings:", error);
-      }
-    };
-    fetchAppearance();
-  }, []);
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";

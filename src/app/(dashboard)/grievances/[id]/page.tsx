@@ -21,6 +21,7 @@ import { GrievanceDiscussion } from "@/components/grievances/grievance-discussio
 import { DocumentsSection } from "@/components/grievances/documents-section";
 import { NotesSection } from "@/components/grievances/notes-section";
 import { PdfGenerateButton } from "@/components/grievances/pdf-generate-button";
+import { GrievanceActions } from "@/components/grievances/grievance-actions";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -136,12 +137,11 @@ export default async function GrievanceDetailPage({ params }: PageProps) {
             Filed {format(new Date(grievance.filingDate), "MMMM d, yyyy")}
           </p>
         </div>
-        <Link href={`/grievances/${grievance.id}/edit`}>
-          <Button variant="outline">
-            <Pencil className="h-4 w-4 mr-2" />
-            Edit
-          </Button>
-        </Link>
+        <GrievanceActions
+          grievanceId={grievance.id}
+          memberEmail={grievance.member?.email}
+          memberName={grievance.member ? `${grievance.member.firstName} ${grievance.member.lastName}` : null}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

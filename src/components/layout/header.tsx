@@ -17,7 +17,20 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { MobileSidebar } from "./mobile-sidebar";
 import Link from "next/link";
 
-export function Header() {
+interface AppearanceSettings {
+  logo_url?: string;
+  logo_height?: string;
+  organization_name?: string;
+  menu_bg_color?: string;
+  menu_text_color?: string;
+  menu_accent_color?: string;
+}
+
+interface HeaderProps {
+  appearance?: AppearanceSettings;
+}
+
+export function Header({ appearance }: HeaderProps) {
   const { signOut } = useAuth();
   const { user } = useOrganization();
 
@@ -39,7 +52,7 @@ export function Header() {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="w-64 p-0">
-          <MobileSidebar />
+          <MobileSidebar appearance={appearance} />
         </SheetContent>
       </Sheet>
 

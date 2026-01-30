@@ -1,49 +1,34 @@
-"use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MemberForm } from "@/components/members/member-form";
-import { toast } from "sonner";
-import type { MemberInput } from "@/lib/validations";
-import type { Department } from "@/types";
-import { useEffect } from "react";
+import prisma from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
-export default function NewMemberPage() {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const [departments, setDepartments] = useState<Department[]>([]);
+export default async function NewMemberPage() {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
 
-  useEffect(() => {
-    fetch("/api/departments")
-      .then((res) => res.json())
-      .then((data) => setDepartments(data.data || []))
-      .catch(console.error);
-  }, []);
+  if (!authUser) {
+    redirect("/login");
+  }
 
-  const handleSubmit = async (data: MemberInput) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/members", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+  const dbUser = await prisma.user.findUnique({
+    where: { supabaseUserId: authUser.id },
+  });
 
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || "Failed to create member");
-      }
+  if (!dbUser) {
+    redirect("/login");
+  }
 
-      toast.success("Member created successfully");
-      router.push("/members");
-      router.refresh();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to create member");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const departments = await prisma.department.findMany({
+    where: {
+      organizationId: dbUser.organizationId,
+      isActive: true,
+    },
+    orderBy: { name: "asc" },
+  });
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -52,11 +37,7 @@ export default function NewMemberPage() {
           <CardTitle>Add New Member</CardTitle>
         </CardHeader>
         <CardContent>
-          <MemberForm
-            departments={departments}
-            onSubmit={handleSubmit}
-            isLoading={isLoading}
-          />
+          <MemberForm departments={departments} />
         </CardContent>
       </Card>
     </div>

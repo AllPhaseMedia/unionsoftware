@@ -17,12 +17,8 @@ export const registerSchema = z.object({
   path: ["confirmPassword"],
 });
 
-// Helper to parse date from string or Date
-const dateField = z.union([
-  z.date(),
-  z.string().transform((val) => val ? new Date(val) : null),
-  z.null(),
-]).optional().nullable();
+// Helper for optional date fields
+const dateField = z.date().optional().nullable();
 
 // Member schemas
 export const memberSchema = z.object({
@@ -57,7 +53,7 @@ export const grievanceSchema = z.object({
   commissionerName: z.string().optional().nullable().or(z.literal("")),
   contractArticleIds: z.array(z.string()).optional(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
-  filingDate: z.union([z.date(), z.string().transform((val) => new Date(val))]),
+  filingDate: z.date(),
   customFields: z.record(z.string(), z.any()).optional(),
 });
 
@@ -111,8 +107,8 @@ export const stepTemplateSchema = z.object({
 // Contract schema
 export const contractSchema = z.object({
   name: z.string().min(1, "Contract name is required"),
-  effectiveDate: z.union([z.date(), z.string().transform((val) => new Date(val))]),
-  expirationDate: z.union([z.date(), z.string().transform((val) => new Date(val))]),
+  effectiveDate: z.date(),
+  expirationDate: z.date(),
   fileUrl: z.string().url().optional().nullable().or(z.literal("")),
   isActive: z.boolean().default(true),
 });

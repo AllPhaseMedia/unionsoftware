@@ -32,6 +32,7 @@ import {
   Eye,
 } from "lucide-react";
 import type { Member, MemberNote, MemberDocument, Grievance } from "@/types";
+import { EmailComposeDialog } from "@/components/email/email-compose-dialog";
 
 const statusColors: Record<string, string> = {
   MEMBER: "bg-green-100 text-green-800",
@@ -78,6 +79,9 @@ export default function MemberDetailPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [viewingDocId, setViewingDocId] = useState<string | null>(null);
+
+  // Email dialog state
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
 
   const fetchMember = useCallback(async () => {
     try {
@@ -233,13 +237,30 @@ export default function MemberDetailPage() {
             )}
           </div>
         </div>
-        <Link href={`/members/${member.id}/edit`}>
-          <Button variant="outline">
-            <Pencil className="h-4 w-4 mr-2" />
-            Edit
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          {member.email && (
+            <Button variant="outline" onClick={() => setIsEmailDialogOpen(true)}>
+              <Mail className="h-4 w-4 mr-2" />
+              Email
+            </Button>
+          )}
+          <Link href={`/members/${member.id}/edit`}>
+            <Button variant="outline">
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+          </Link>
+        </div>
       </div>
+
+      {/* Email Dialog */}
+      <EmailComposeDialog
+        open={isEmailDialogOpen}
+        onOpenChange={setIsEmailDialogOpen}
+        recipientEmail={member.email || ""}
+        recipientName={`${member.firstName} ${member.lastName}`}
+        memberId={member.id}
+      />
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>

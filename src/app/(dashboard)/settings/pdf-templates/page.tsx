@@ -242,61 +242,144 @@ const defaultTemplate = `<!DOCTYPE html>
 <html>
 <head>
   <style>
-    body { font-family: Arial, sans-serif; margin: 40px; }
-    h1 { color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; }
-    .header { display: flex; justify-content: space-between; margin-bottom: 30px; }
-    .section { margin-bottom: 20px; }
-    .section h2 { font-size: 14px; color: #666; margin-bottom: 5px; }
-    .section p { margin: 0; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    th { background-color: #f5f5f5; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 30px 40px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      font-size: 16px;
+      margin: 0 0 5px 0;
+    }
+    .header .phone {
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+    .grievance-title {
+      display: inline-block;
+      border: 3px solid #000;
+      padding: 8px 30px;
+      font-size: 24px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    .case-number {
+      text-align: center;
+      font-size: 14px;
+      margin: 15px 0;
+    }
+    .notice {
+      text-align: center;
+      font-weight: bold;
+      font-size: 11px;
+      margin: 15px 0;
+      text-transform: uppercase;
+    }
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+    .info-table td {
+      border: 1px solid #000;
+      padding: 8px 10px;
+      vertical-align: top;
+    }
+    .info-table .label {
+      font-weight: bold;
+    }
+    .section-title {
+      font-weight: bold;
+      text-decoration: underline;
+      margin: 25px 0 10px 0;
+      font-size: 13px;
+    }
+    .content {
+      margin: 0 0 15px 15px;
+      text-align: justify;
+    }
+    .signature-section {
+      margin-top: 60px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .signature-line {
+      width: 45%;
+      text-align: center;
+    }
+    .signature-line .line {
+      border-top: 1px solid #000;
+      margin-bottom: 5px;
+    }
+    .footer {
+      margin-top: 40px;
+      font-size: 10px;
+    }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>Grievance Summary</h1>
-    <div>
-      <p><strong>{{grievance.number}}</strong></p>
-      <p>{{grievance.filing_date}}</p>
+    <h1>{{organization.name}}</h1>
+  </div>
+
+  <div style="text-align: center;">
+    <div class="grievance-title">GRIEVANCE</div>
+  </div>
+
+  <div class="case-number">
+    <strong>Case Number:</strong> #{{grievance.number}}
+  </div>
+
+  <div class="notice">
+    NOTICE: THE EMPLOYEE IS ENTITLED TO REPRESENTATION BY THE UNION
+  </div>
+
+  <table class="info-table">
+    <tr>
+      <td style="width: 50%;"><span class="label">To:</span> {{department.commissioner}}</td>
+      <td><span class="label">Date:</span> {{grievance.filing_date}}</td>
+    </tr>
+    <tr>
+      <td><span class="label">Employee:</span> {{member.name}}</td>
+      <td><span class="label">Oral Discussion:</span> {{grievance.filing_date}}</td>
+    </tr>
+    <tr>
+      <td colspan="2"><span class="label">Title:</span> {{grievance.job_title}}</td>
+    </tr>
+    <tr>
+      <td colspan="2"><span class="label">Department:</span> {{department.name}}</td>
+    </tr>
+  </table>
+
+  <div class="section-title">GRIEVANCE:</div>
+  <div class="content">
+    {{grievance.description}}
+  </div>
+
+  <div class="section-title">RELIEF REQUESTED:</div>
+  <div class="content">
+    {{grievance.relief_requested}}
+  </div>
+
+  <div class="signature-section">
+    <div class="signature-line">
+      <div class="line"></div>
+      <div>Signature of Employee</div>
+    </div>
+    <div class="signature-line">
+      <div class="line"></div>
+      <div>Date</div>
     </div>
   </div>
 
-  <div class="section">
-    <h2>Member</h2>
-    <p>{{member.name}}</p>
+  <div class="footer">
+    {{organization.name}}
   </div>
-
-  <div class="section">
-    <h2>Description</h2>
-    <p>{{grievance.description}}</p>
-  </div>
-
-  <div class="section">
-    <h2>Status</h2>
-    <p>{{grievance.status}}</p>
-  </div>
-
-  <h2>Workflow Steps</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Step</th>
-        <th>Name</th>
-        <th>Status</th>
-        <th>Deadline</th>
-      </tr>
-    </thead>
-    <tbody>
-      {{#each steps}}
-      <tr>
-        <td>{{this.number}}</td>
-        <td>{{this.name}}</td>
-        <td>{{this.status}}</td>
-        <td>{{this.deadline}}</td>
-      </tr>
-      {{/each}}
-    </tbody>
-  </table>
 </body>
 </html>`;

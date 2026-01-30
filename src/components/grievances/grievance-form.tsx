@@ -153,39 +153,51 @@ export function GrievanceForm({
   const descriptionSnippets = snippets.filter(s => s.category === "DESCRIPTION");
   const reliefSnippets = snippets.filter(s => s.category === "RELIEF_REQUESTED");
 
-  // Auto-fill member data when member is selected
+  // Auto-fill member data when member is selected (for new grievances or when fields are empty)
   useEffect(() => {
-    if (memberId && !grievance) {
+    if (memberId) {
       const selectedMember = members.find(m => m.id === memberId);
       if (selectedMember) {
-        // Auto-fill department from member
-        if (selectedMember.departmentId) {
-          setValue("departmentId", selectedMember.departmentId);
+        // For new grievances, auto-fill everything
+        // For existing grievances, only fill if the field is empty
+        const isNew = !grievance;
+        const currentJobTitle = watch("memberJobTitle");
+        const currentDeptId = watch("departmentId");
+        const currentCommissioner = watch("commissionerName");
 
-          // Get commissioner from department
-          const dept = departments.find(d => d.id === selectedMember.departmentId);
-          if (dept?.commissionerName) {
-            setValue("commissionerName", dept.commissionerName);
-          }
+        // Auto-fill department from member (only for new)
+        if (isNew && selectedMember.departmentId && !currentDeptId) {
+          setValue("departmentId", selectedMember.departmentId);
         }
 
         // Auto-fill job title from member
-        if (selectedMember.jobTitle) {
+        if (selectedMember.jobTitle && (!currentJobTitle || isNew)) {
           setValue("memberJobTitle", selectedMember.jobTitle);
+        }
+
+        // Get commissioner from department (if department is set)
+        const deptId = currentDeptId || selectedMember.departmentId;
+        if (deptId) {
+          const dept = departments.find(d => d.id === deptId);
+          if (dept?.commissionerName && (!currentCommissioner || isNew)) {
+            setValue("commissionerName", dept.commissionerName);
+          }
         }
       }
     }
-  }, [memberId, members, departments, setValue, grievance]);
+  }, [memberId, members, departments, setValue, grievance, watch]);
 
   // Update commissioner when department changes
   useEffect(() => {
-    if (departmentId && !grievance) {
+    if (departmentId) {
       const dept = departments.find(d => d.id === departmentId);
-      if (dept?.commissionerName) {
+      const currentCommissioner = watch("commissionerName");
+      // Only auto-fill if empty or this is a new grievance
+      if (dept?.commissionerName && (!currentCommissioner || !grievance)) {
         setValue("commissionerName", dept.commissionerName);
       }
     }
-  }, [departmentId, departments, setValue, grievance]);
+  }, [departmentId, departments, setValue, grievance, watch]);
 
   // Handle pre-selected member
   useEffect(() => {
@@ -289,7 +301,6 @@ export function GrievanceForm({
                 {members.map((member) => (
                   <SelectItem key={member.id} value={member.id}>
                     {member.firstName} {member.lastName}
-                    {member.jobTitle && ` - ${member.jobTitle}`}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -337,7 +348,6 @@ export function GrievanceForm({
                 {departments.map((dept) => (
                   <SelectItem key={dept.id} value={dept.id}>
                     {dept.name}
-                    {dept.commissionerName && ` (${dept.commissionerName})`}
                   </SelectItem>
                 ))}
               </SelectContent>

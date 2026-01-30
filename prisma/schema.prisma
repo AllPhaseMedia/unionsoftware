@@ -1,0 +1,489 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Multi-tenancy
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users           User[]
+  members         Member[]
+  departments     Department[]
+  grievances      Grievance[]
+  contracts       Contract[]
+  stepTemplates   StepTemplate[]
+  customFields    CustomField[]
+  pdfTemplates    PdfTemplate[]
+  emailTemplates  EmailTemplate[]
+  systemSettings  SystemSetting[]
+
+  @@map("organizations")
+}
+
+model User {
+  id              String   @id @default(uuid())
+  supabaseUserId  String   @unique @map("supabase_user_id")
+  email           String
+  name            String
+  role            UserRole @default(REPRESENTATIVE)
+  organizationId  String   @map("organization_id")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  organization         Organization          @relation(fields: [organizationId], references: [id])
+  assignedGrievances   Grievance[]           @relation("AssignedRepresentative")
+  createdGrievances    Grievance[]           @relation("CreatedBy")
+  grievanceNotes       GrievanceNote[]
+  grievanceMessages    GrievanceMessage[]
+  memberNotes          MemberNote[]
+  notifications        UserNotification[]
+  auditLogs            AuditLog[]
+
+  @@unique([email, organizationId])
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  REPRESENTATIVE
+  VIEWER
+}
+
+model Member {
+  id              String           @id @default(uuid())
+  organizationId  String           @map("organization_id")
+  firstName       String           @map("first_name")
+  lastName        String           @map("last_name")
+  email           String?
+  phone           String?
+  address         String?
+  city            String?
+  state           String?
+  zipCode         String?          @map("zip_code")
+  hireDate        DateTime?        @map("hire_date")
+  departmentId    String?          @map("department_id")
+  status          MemberStatus     @default(MEMBER)
+  employmentType  EmploymentType?  @map("employment_type")
+  customFields    Json?            @map("custom_fields")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  organization  Organization      @relation(fields: [organizationId], references: [id])
+  department    Department?       @relation(fields: [departmentId], references: [id])
+  grievances    Grievance[]
+  notes         MemberNote[]
+  documents     MemberDocument[]
+
+  @@map("members")
+}
+
+enum MemberStatus {
+  MEMBER
+  NON_MEMBER
+  SEVERED
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  TEMPORARY
+  SEASONAL
+}
+
+model Grievance {
+  id                  String          @id @default(uuid())
+  organizationId      String          @map("organization_id")
+  grievanceNumber     String          @map("grievance_number")
+  memberId            String?         @map("member_id")
+  representativeId    String?         @map("representative_id")
+  createdById         String          @map("created_by_id")
+  departmentId        String?         @map("department_id")
+  description         String
+  status              GrievanceStatus @default(OPEN)
+  priority            Priority        @default(MEDIUM)
+  outcome             GrievanceOutcome?
+  outcomeNotes        String?         @map("outcome_notes")
+  settlementAmount    Decimal?        @map("settlement_amount") @db.Decimal(10, 2)
+  filingDate          DateTime        @default(now()) @map("filing_date")
+  customFields        Json?           @map("custom_fields")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  organization        Organization            @relation(fields: [organizationId], references: [id])
+  member              Member?                 @relation(fields: [memberId], references: [id])
+  representative      User?                   @relation("AssignedRepresentative", fields: [representativeId], references: [id])
+  createdBy           User                    @relation("CreatedBy", fields: [createdById], references: [id])
+  department          Department?             @relation(fields: [departmentId], references: [id])
+  steps               GrievanceStep[]
+  notes               GrievanceNote[]
+  messages            GrievanceMessage[]
+  documents           Document[]
+  contractViolations  GrievanceContractViolation[]
+  relatedFrom         GrievanceRelation[]     @relation("RelatedFrom")
+  relatedTo           GrievanceRelation[]     @relation("RelatedTo")
+
+  @@unique([grievanceNumber, organizationId])
+  @@map("grievances")
+}
+
+enum GrievanceStatus {
+  OPEN
+  IN_PROGRESS
+  PENDING_RESPONSE
+  RESOLVED
+  CLOSED
+  WITHDRAWN
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum GrievanceOutcome {
+  WON
+  LOST
+  SETTLED
+  WITHDRAWN
+  PENDING_ARBITRATION
+}
+
+model GrievanceStep {
+  id            String      @id @default(uuid())
+  grievanceId   String      @map("grievance_id")
+  stepNumber    Int         @map("step_number")
+  name          String
+  description   String?
+  deadline      DateTime?
+  completedAt   DateTime?   @map("completed_at")
+  status        StepStatus  @default(PENDING)
+  notes         String?
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  grievance     Grievance   @relation(fields: [grievanceId], references: [id], onDelete: Cascade)
+
+  @@map("grievance_steps")
+}
+
+enum StepStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+  SKIPPED
+}
+
+model StepTemplate {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  stepNumber      Int      @map("step_number")
+  name            String
+  description     String?
+  defaultDays     Int?     @map("default_days")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("step_templates")
+}
+
+model Department {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  name            String
+  code            String?
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  members         Member[]
+  grievances      Grievance[]
+
+  @@unique([name, organizationId])
+  @@map("departments")
+}
+
+model GrievanceNote {
+  id            String   @id @default(uuid())
+  grievanceId   String   @map("grievance_id")
+  userId        String   @map("user_id")
+  content       String
+  isInternal    Boolean  @default(false) @map("is_internal")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  grievance     Grievance @relation(fields: [grievanceId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id])
+
+  @@map("grievance_notes")
+}
+
+model GrievanceMessage {
+  id            String   @id @default(uuid())
+  grievanceId   String   @map("grievance_id")
+  userId        String   @map("user_id")
+  parentId      String?  @map("parent_id")
+  content       String
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  grievance     Grievance          @relation(fields: [grievanceId], references: [id], onDelete: Cascade)
+  user          User               @relation(fields: [userId], references: [id])
+  parent        GrievanceMessage?  @relation("Replies", fields: [parentId], references: [id])
+  replies       GrievanceMessage[] @relation("Replies")
+  readBy        MessageRead[]
+
+  @@map("grievance_messages")
+}
+
+model MessageRead {
+  id        String   @id @default(uuid())
+  messageId String   @map("message_id")
+  userId    String   @map("user_id")
+  readAt    DateTime @default(now()) @map("read_at")
+
+  message   GrievanceMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@map("message_reads")
+}
+
+model MemberNote {
+  id        String   @id @default(uuid())
+  memberId  String   @map("member_id")
+  userId    String   @map("user_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  member    Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  user      User   @relation(fields: [userId], references: [id])
+
+  @@map("member_notes")
+}
+
+model MemberDocument {
+  id          String   @id @default(uuid())
+  memberId    String   @map("member_id")
+  fileName    String   @map("file_name")
+  fileType    String   @map("file_type")
+  fileSize    Int      @map("file_size")
+  storagePath String   @map("storage_path")
+  uploadedAt  DateTime @default(now()) @map("uploaded_at")
+
+  member      Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@map("member_documents")
+}
+
+model Document {
+  id          String   @id @default(uuid())
+  grievanceId String   @map("grievance_id")
+  fileName    String   @map("file_name")
+  fileType    String   @map("file_type")
+  fileSize    Int      @map("file_size")
+  storagePath String   @map("storage_path")
+  uploadedAt  DateTime @default(now()) @map("uploaded_at")
+
+  grievance   Grievance @relation(fields: [grievanceId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
+
+model Contract {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  name            String
+  effectiveDate   DateTime @map("effective_date")
+  expirationDate  DateTime @map("expiration_date")
+  fileUrl         String?  @map("file_url")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  organization    Organization      @relation(fields: [organizationId], references: [id])
+  articles        ContractArticle[]
+
+  @@map("contracts")
+}
+
+model ContractArticle {
+  id            String   @id @default(uuid())
+  contractId    String   @map("contract_id")
+  articleNumber String   @map("article_number")
+  title         String
+  content       String
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  contract      Contract                     @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  violations    GrievanceContractViolation[]
+
+  @@map("contract_articles")
+}
+
+model GrievanceContractViolation {
+  id                String   @id @default(uuid())
+  grievanceId       String   @map("grievance_id")
+  contractArticleId String   @map("contract_article_id")
+  notes             String?
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  grievance         Grievance       @relation(fields: [grievanceId], references: [id], onDelete: Cascade)
+  contractArticle   ContractArticle @relation(fields: [contractArticleId], references: [id])
+
+  @@unique([grievanceId, contractArticleId])
+  @@map("grievance_contract_violations")
+}
+
+model GrievanceRelation {
+  id              String   @id @default(uuid())
+  grievanceId     String   @map("grievance_id")
+  relatedId       String   @map("related_id")
+  relationType    String   @map("relation_type")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  grievance       Grievance @relation("RelatedFrom", fields: [grievanceId], references: [id], onDelete: Cascade)
+  related         Grievance @relation("RelatedTo", fields: [relatedId], references: [id], onDelete: Cascade)
+
+  @@unique([grievanceId, relatedId])
+  @@map("grievance_relations")
+}
+
+model CustomField {
+  id              String        @id @default(uuid())
+  organizationId  String        @map("organization_id")
+  entityType      EntityType    @map("entity_type")
+  fieldName       String        @map("field_name")
+  fieldLabel      String        @map("field_label")
+  fieldType       FieldType     @map("field_type")
+  options         Json?
+  isRequired      Boolean       @default(false) @map("is_required")
+  displayOrder    Int           @default(0) @map("display_order")
+  isActive        Boolean       @default(true) @map("is_active")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([fieldName, entityType, organizationId])
+  @@map("custom_fields")
+}
+
+enum EntityType {
+  GRIEVANCE
+  MEMBER
+}
+
+enum FieldType {
+  TEXT
+  NUMBER
+  DATE
+  SELECT
+  CHECKBOX
+  TEXTAREA
+}
+
+model PdfTemplate {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  name            String
+  description     String?
+  content         String
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("pdf_templates")
+}
+
+model EmailTemplate {
+  id              String                @id @default(uuid())
+  organizationId  String                @map("organization_id")
+  name            String
+  subject         String
+  body            String
+  category        EmailTemplateCategory
+  isActive        Boolean               @default(true) @map("is_active")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("email_templates")
+}
+
+enum EmailTemplateCategory {
+  MEMBER_NOTIFICATION
+  MANAGEMENT
+  INTERNAL
+}
+
+model SystemSetting {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  key             String
+  value           String
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([key, organizationId])
+  @@map("system_settings")
+}
+
+model AuditLog {
+  id          String      @id @default(uuid())
+  entityType  String      @map("entity_type")
+  entityId    String      @map("entity_id")
+  action      AuditAction
+  userId      String      @map("user_id")
+  changes     Json
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  user        User @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+model UserNotification {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  type        String
+  title       String
+  message     String
+  linkUrl     String?  @map("link_url")
+  isRead      Boolean  @default(false) @map("is_read")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_notifications")
+}

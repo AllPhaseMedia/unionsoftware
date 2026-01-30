@@ -250,7 +250,15 @@ export async function POST(request: Request, { params }: RouteParams) {
     // We'll upload the HTML and let the client convert it
 
     const adminClient = createAdminClient();
-    const fileName = `${grievance.grievanceNumber}-${format(new Date(), "yyyy-MM-dd-HHmmss")}.html`;
+
+    // Build filename: "Grievance # - Member Name - Department.pdf"
+    const memberName = grievance.member
+      ? `${grievance.member.firstName} ${grievance.member.lastName}`
+      : "No Member";
+    const departmentName = grievance.department?.name || "No Department";
+    // Sanitize filename (remove invalid characters)
+    const sanitize = (str: string) => str.replace(/[<>:"/\\|?*]/g, "").trim();
+    const fileName = `${sanitize(grievance.grievanceNumber)} - ${sanitize(memberName)} - ${sanitize(departmentName)}.html`;
     const storagePath = `${dbUser.organization.slug}/grievances/${id}/${fileName}`;
 
     const { error: uploadError } = await adminClient.storage

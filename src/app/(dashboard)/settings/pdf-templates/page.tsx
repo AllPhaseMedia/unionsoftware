@@ -41,9 +41,42 @@ export default function PdfTemplatesPage() {
     try {
       const response = await fetch("/api/pdf-templates");
       const data = await response.json();
-      setTemplates(data.data || []);
+      const templateList = data.data || [];
+
+      // If no templates exist, create the default one
+      if (templateList.length === 0) {
+        await createDefaultTemplate();
+        return;
+      }
+
+      setTemplates(templateList);
     } catch (error) {
       toast.error("Failed to load templates");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const createDefaultTemplate = async () => {
+    try {
+      const response = await fetch("/api/pdf-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Grievance Form",
+          description: "Standard grievance form template",
+          content: defaultTemplate,
+          isActive: true,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTemplates([data.data]);
+        toast.success("Default template created");
+      }
+    } catch (error) {
+      console.error("Failed to create default template:", error);
     } finally {
       setIsLoading(false);
     }

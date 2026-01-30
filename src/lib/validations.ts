@@ -57,7 +57,21 @@ export const grievanceSchema = z.object({
   customFields: z.record(z.string(), z.any()).optional(),
 });
 
+// Schema for API requests (accepts date as string)
+export const grievanceApiSchema = grievanceSchema.extend({
+  filingDate: z.union([z.date(), z.string().transform((val) => new Date(val))]),
+});
+
 export const grievanceUpdateSchema = grievanceSchema.extend({
+  status: z.enum(["OPEN", "IN_PROGRESS", "PENDING_RESPONSE", "RESOLVED", "CLOSED", "WITHDRAWN"]),
+  outcome: z.enum(["WON", "LOST", "SETTLED", "WITHDRAWN", "PENDING_ARBITRATION"]).optional().nullable(),
+  outcomeNotes: z.string().optional().nullable(),
+  settlementAmount: z.number().optional().nullable(),
+  reliefRequested: z.string().optional().nullable().or(z.literal("")),
+});
+
+// API version of update schema (accepts date as string)
+export const grievanceUpdateApiSchema = grievanceApiSchema.extend({
   status: z.enum(["OPEN", "IN_PROGRESS", "PENDING_RESPONSE", "RESOLVED", "CLOSED", "WITHDRAWN"]),
   outcome: z.enum(["WON", "LOST", "SETTLED", "WITHDRAWN", "PENDING_ARBITRATION"]).optional().nullable(),
   outcomeNotes: z.string().optional().nullable(),

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
-import { grievanceUpdateSchema } from "@/lib/validations";
+import { grievanceUpdateApiSchema } from "@/lib/validations";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -114,7 +114,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     const body = await request.json();
-    const validatedData = grievanceUpdateSchema.parse(body);
+    const validatedData = grievanceUpdateApiSchema.parse(body);
 
     const grievance = await prisma.grievance.update({
       where: { id },
@@ -145,7 +145,9 @@ export async function PUT(request: Request, { params }: RouteParams) {
   } catch (error) {
     console.error("Error updating grievance:", error);
     if (error instanceof Error && error.name === "ZodError") {
-      return NextResponse.json({ error: "Invalid data" }, { status: 400 });
+      const zodError = error as unknown as { issues: Array<{ path: string[]; message: string }> };
+      const details = zodError.issues?.map(i => `${i.path.join('.')}: ${i.message}`).join(', ');
+      return NextResponse.json({ error: `Invalid data: ${details}` }, { status: 400 });
     }
     return NextResponse.json(
       { error: "Failed to update grievance" },

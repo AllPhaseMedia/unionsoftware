@@ -4,6 +4,56 @@ import { getAuthUser } from "@/lib/auth";
 import { format } from "date-fns";
 import nodemailer from "nodemailer";
 
+// Get base URL for tracking links
+function getBaseUrl(): string {
+  // Use NEXT_PUBLIC_APP_URL if set, otherwise construct from VERCEL_URL or default to localhost
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return "http://localhost:3000";
+}
+
+// Rewrite links in HTML to go through click tracking
+function addClickTracking(html: string, emailId: string, baseUrl: string): string {
+  // Match href attributes in anchor tags
+  return html.replace(
+    /href=["']([^"']+)["']/gi,
+    (match, url) => {
+      // Skip mailto:, tel:, and anchor links
+      if (url.startsWith("mailto:") || url.startsWith("tel:") || url.startsWith("#")) {
+        return match;
+      }
+      // Skip tracking URLs (prevent double-tracking)
+      if (url.includes("/api/tracking/")) {
+        return match;
+      }
+      // Encode the original URL
+      const encodedUrl = Buffer.from(url).toString("base64");
+      const trackingUrl = `${baseUrl}/api/tracking/click/${emailId}?url=${encodeURIComponent(encodedUrl)}`;
+      return `href="${trackingUrl}"`;
+    }
+  );
+}
+
+// Add tracking pixel to HTML
+function addTrackingPixel(html: string, emailId: string, baseUrl: string): string {
+  const trackingPixel = `<img src="${baseUrl}/api/tracking/open/${emailId}" width="1" height="1" style="display:none;width:1px;height:1px;" alt="" />`;
+
+  // Try to insert before closing body tag, or append at end
+  if (html.includes("</body>")) {
+    return html.replace("</body>", `${trackingPixel}</body>`);
+  }
+  if (html.includes("</div>")) {
+    // Insert before the last closing div
+    const lastDivIndex = html.lastIndexOf("</div>");
+    return html.slice(0, lastDivIndex) + trackingPixel + html.slice(lastDivIndex);
+  }
+  return html + trackingPixel;
+}
+
 // Template variable replacements
 function replaceTemplateVariables(template: string, data: Record<string, unknown>): string {
   let result = template;
@@ -216,11 +266,16 @@ export async function POST(
         const finalBody = replaceTemplateVariables(campaign.body, templateData);
 
         // Convert to HTML
-        const htmlBody = `
+        let htmlBody = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             ${finalBody.split("\n").map((line) => (line.trim() ? `<p>${line}</p>` : "<br>")).join("")}
           </div>
         `;
+
+        // Add tracking (click tracking on links, open tracking pixel)
+        const baseUrl = getBaseUrl();
+        htmlBody = addClickTracking(htmlBody, email.id, baseUrl);
+        htmlBody = addTrackingPixel(htmlBody, email.id, baseUrl);
 
         // Send email
         await transporter.sendMail({

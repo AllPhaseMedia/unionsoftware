@@ -20,6 +20,8 @@ import type {
   UserNotification,
   EmailCampaign,
   CampaignEmail,
+  EmailOpen,
+  EmailClick,
   UserRole,
   MemberStatus,
   EmploymentType,
@@ -58,6 +60,8 @@ export type {
   UserNotification,
   EmailCampaign,
   CampaignEmail,
+  EmailOpen,
+  EmailClick,
 };
 
 export {
@@ -243,4 +247,11 @@ export interface CampaignStats {
   failedCount: number;
   pendingCount: number;
   progress: number;
+  // Tracking stats
+  uniqueOpens: number;
+  uniqueClicks: number;
+  totalOpens: number;
+  totalClicks: number;
+  openRate: number;
+  clickRate: number;
 }

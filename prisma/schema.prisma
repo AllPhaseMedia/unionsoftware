@@ -559,6 +559,12 @@ model EmailCampaign {
   sentCount       Int              @default(0) @map("sent_count")
   failedCount     Int              @default(0) @map("failed_count")
 
+  // Tracking stats (denormalized)
+  uniqueOpens     Int              @default(0) @map("unique_opens")
+  uniqueClicks    Int              @default(0) @map("unique_clicks")
+  totalOpens      Int              @default(0) @map("total_opens")
+  totalClicks     Int              @default(0) @map("total_clicks")
+
   createdById     String           @map("created_by_id")
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
@@ -592,10 +598,19 @@ model CampaignEmail {
   sentAt          DateTime?    @map("sent_at")
   errorMessage    String?      @map("error_message")
   retryCount      Int          @default(0) @map("retry_count")
+
+  // Tracking stats (denormalized for performance)
+  openCount       Int          @default(0) @map("open_count")
+  clickCount      Int          @default(0) @map("click_count")
+  firstOpenedAt   DateTime?    @map("first_opened_at")
+  lastOpenedAt    DateTime?    @map("last_opened_at")
+
   createdAt       DateTime     @default(now()) @map("created_at")
 
   campaign        EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   member          Member        @relation(fields: [memberId], references: [id])
+  opens           EmailOpen[]
+  clicks          EmailClick[]
 
   @@index([campaignId, status])
   @@map("campaign_emails")
@@ -607,4 +622,33 @@ enum EmailStatus {
   SENT
   FAILED
   SKIPPED
+}
+
+// Email open tracking
+model EmailOpen {
+  id              String        @id @default(uuid())
+  emailId         String        @map("email_id")
+  openedAt        DateTime      @default(now()) @map("opened_at")
+  userAgent       String?       @map("user_agent")
+  ipAddress       String?       @map("ip_address")
+
+  email           CampaignEmail @relation(fields: [emailId], references: [id], onDelete: Cascade)
+
+  @@index([emailId])
+  @@map("email_opens")
+}
+
+// Email click tracking
+model EmailClick {
+  id              String        @id @default(uuid())
+  emailId         String        @map("email_id")
+  url             String
+  clickedAt       DateTime      @default(now()) @map("clicked_at")
+  userAgent       String?       @map("user_agent")
+  ipAddress       String?       @map("ip_address")
+
+  email           CampaignEmail @relation(fields: [emailId], references: [id], onDelete: Cascade)
+
+  @@index([emailId])
+  @@map("email_clicks")
 }

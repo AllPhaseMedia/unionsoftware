@@ -19,7 +19,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, Loader2, RefreshCw } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Eye, MousePointer } from "lucide-react";
 import { toast } from "sonner";
 import type { EmailStatus } from "@/types";
 
@@ -31,6 +37,10 @@ interface RecipientItem {
   sentAt: string | null;
   errorMessage: string | null;
   retryCount: number;
+  openCount: number;
+  clickCount: number;
+  firstOpenedAt: string | null;
+  lastOpenedAt: string | null;
   member: {
     id: string;
     firstName: string;
@@ -130,6 +140,9 @@ export function RecipientsList({
 
   const totalPages = Math.ceil(total / pageSize);
 
+  // Check if any recipient has tracking data
+  const hasTrackingData = recipients.some(r => r.status === "SENT");
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -175,26 +188,32 @@ export function RecipientsList({
         </div>
 
         {/* Table */}
-        <div className="border rounded-lg">
+        <div className="border rounded-lg overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Recipient</TableHead>
                 <TableHead>Department</TableHead>
                 <TableHead>Status</TableHead>
+                {hasTrackingData && (
+                  <>
+                    <TableHead className="text-center">Opens</TableHead>
+                    <TableHead className="text-center">Clicks</TableHead>
+                  </>
+                )}
                 <TableHead>Sent At</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8">
+                  <TableCell colSpan={hasTrackingData ? 6 : 4} className="text-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
                   </TableCell>
                 </TableRow>
               ) : recipients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={hasTrackingData ? 6 : 4} className="text-center py-8 text-gray-500">
                     {total === 0
                       ? "No recipients generated yet. Click 'Generate Recipients' to create the list."
                       : "No recipients match the filter."}
@@ -220,6 +239,48 @@ export function RecipientsList({
                         )}
                       </div>
                     </TableCell>
+                    {hasTrackingData && (
+                      <>
+                        <TableCell className="text-center">
+                          {recipient.status === "SENT" ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className={`inline-flex items-center gap-1 ${recipient.openCount > 0 ? "text-purple-600" : "text-gray-400"}`}>
+                                    <Eye className="h-4 w-4" />
+                                    <span>{recipient.openCount}</span>
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {recipient.openCount > 0 ? (
+                                    <div className="text-xs">
+                                      <div>First opened: {formatDate(recipient.firstOpenedAt)}</div>
+                                      {recipient.openCount > 1 && (
+                                        <div>Last opened: {formatDate(recipient.lastOpenedAt)}</div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    "Not opened yet"
+                                  )}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {recipient.status === "SENT" ? (
+                            <div className={`inline-flex items-center gap-1 ${recipient.clickCount > 0 ? "text-indigo-600" : "text-gray-400"}`}>
+                              <MousePointer className="h-4 w-4" />
+                              <span>{recipient.clickCount}</span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </TableCell>
+                      </>
+                    )}
                     <TableCell>{formatDate(recipient.sentAt)}</TableCell>
                   </TableRow>
                 ))

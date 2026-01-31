@@ -43,6 +43,12 @@ interface CampaignData {
     failed: number;
     skipped: number;
   };
+  trackingStats: {
+    uniqueOpens: number;
+    uniqueClicks: number;
+    totalOpens: number;
+    totalClicks: number;
+  };
 }
 
 interface RecipientItem {
@@ -311,6 +317,7 @@ export default function CampaignDetailPage() {
             sentCount={campaign.sentCount}
             failedCount={campaign.failedCount}
             stats={campaign.stats}
+            trackingStats={campaign.trackingStats}
           />
 
           <Card>

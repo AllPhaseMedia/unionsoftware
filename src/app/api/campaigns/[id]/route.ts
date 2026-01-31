@@ -59,11 +59,20 @@ export async function GET(
       stats[stat.status.toLowerCase() as keyof typeof stats] = stat._count.status;
     }
 
+    // Tracking stats from campaign
+    const trackingStats = {
+      uniqueOpens: campaign.uniqueOpens,
+      uniqueClicks: campaign.uniqueClicks,
+      totalOpens: campaign.totalOpens,
+      totalClicks: campaign.totalClicks,
+    };
+
     return NextResponse.json({
       success: true,
       data: {
         ...campaign,
         stats,
+        trackingStats,
       },
     });
   } catch (error) {

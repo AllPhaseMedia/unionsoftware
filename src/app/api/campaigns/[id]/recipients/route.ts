@@ -49,6 +49,10 @@ export async function GET(
           sentAt: true,
           errorMessage: true,
           retryCount: true,
+          openCount: true,
+          clickCount: true,
+          firstOpenedAt: true,
+          lastOpenedAt: true,
           member: {
             select: {
               id: true,

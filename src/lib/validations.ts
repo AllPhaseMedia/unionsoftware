@@ -171,6 +171,27 @@ export const userSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
+// Campaign target criteria schema
+export const campaignTargetCriteriaSchema = z.object({
+  departments: z.array(z.string()).optional(),
+  statuses: z.array(z.enum(["MEMBER", "NON_MEMBER", "SEVERED"])).optional(),
+  employmentTypes: z.array(z.enum(["FULL_TIME", "PART_TIME", "TEMPORARY", "SEASONAL"])).optional(),
+});
+
+// Email campaign schema (for creating/updating)
+export const emailCampaignSchema = z.object({
+  name: z.string().min(1, "Campaign name is required"),
+  subject: z.string().min(1, "Email subject is required"),
+  body: z.string().min(1, "Email body is required"),
+  templateId: z.string().optional().nullable(),
+  targetCriteria: campaignTargetCriteriaSchema.optional().nullable(),
+  emailsPerMinute: z.number().int().min(1).max(500).default(50),
+  scheduledAt: z.date().optional().nullable(),
+});
+
+// Campaign update schema (allows partial updates)
+export const emailCampaignUpdateSchema = emailCampaignSchema.partial();
+
 // Type exports
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
@@ -188,3 +209,6 @@ export type CustomFieldInput = z.infer<typeof customFieldSchema>;
 export type PdfTemplateInput = z.infer<typeof pdfTemplateSchema>;
 export type EmailTemplateInput = z.infer<typeof emailTemplateSchema>;
 export type UserInput = z.infer<typeof userSchema>;
+export type CampaignTargetCriteriaInput = z.infer<typeof campaignTargetCriteriaSchema>;
+export type EmailCampaignInput = z.infer<typeof emailCampaignSchema>;
+export type EmailCampaignUpdateInput = z.infer<typeof emailCampaignUpdateSchema>;

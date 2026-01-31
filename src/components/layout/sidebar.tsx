@@ -19,6 +19,7 @@ import {
   Briefcase,
   Send,
   User,
+  Megaphone,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -54,6 +55,7 @@ export function Sidebar({ appearance = {} }: SidebarProps) {
     { title: "Dashboard", href: "/", icon: LayoutDashboard },
     { title: "Grievances", href: "/grievances", icon: FileText },
     { title: "Members", href: "/members", icon: Users },
+    { title: "Campaigns", href: "/campaigns", icon: Megaphone },
     { title: "Reports", href: "/reports", icon: BarChart3 },
   ];
 

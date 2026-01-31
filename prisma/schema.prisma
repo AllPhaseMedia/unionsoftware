@@ -27,6 +27,7 @@ model Organization {
   emailTemplates  EmailTemplate[]
   systemSettings  SystemSetting[]
   textSnippets    TextSnippet[]
+  emailCampaigns  EmailCampaign[]
 
   @@map("organizations")
 }
@@ -51,6 +52,7 @@ model User {
   notifications        UserNotification[]
   auditLogs            AuditLog[]
   completedSteps       GrievanceStep[]       @relation("StepCompletedBy")
+  createdCampaigns     EmailCampaign[]
 
   @@unique([email, organizationId])
   @@map("users")
@@ -86,11 +88,12 @@ model Member {
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
 
-  organization  Organization      @relation(fields: [organizationId], references: [id])
-  department    Department?       @relation(fields: [departmentId], references: [id])
-  grievances    Grievance[]
-  notes         MemberNote[]
-  documents     MemberDocument[]
+  organization    Organization      @relation(fields: [organizationId], references: [id])
+  department      Department?       @relation(fields: [departmentId], references: [id])
+  grievances      Grievance[]
+  notes           MemberNote[]
+  documents       MemberDocument[]
+  campaignEmails  CampaignEmail[]
 
   @@index([organizationId, lastName, firstName])
   @@index([organizationId, status])
@@ -448,6 +451,7 @@ model EmailTemplate {
   updatedAt       DateTime              @updatedAt @map("updated_at")
 
   organization    Organization @relation(fields: [organizationId], references: [id])
+  campaigns       EmailCampaign[]
 
   @@map("email_templates")
 }
@@ -526,4 +530,81 @@ model UserNotification {
   user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_notifications")
+}
+
+// Email Campaign
+model EmailCampaign {
+  id              String           @id @default(uuid())
+  organizationId  String           @map("organization_id")
+  name            String
+  subject         String
+  body            String
+  templateId      String?          @map("template_id")
+  status          CampaignStatus   @default(DRAFT)
+
+  // Targeting: { departments: [], statuses: [], employmentTypes: [] }
+  targetCriteria  Json?            @map("target_criteria")
+
+  // Throttling
+  emailsPerMinute Int              @default(50) @map("emails_per_minute")
+
+  // Timestamps
+  scheduledAt     DateTime?        @map("scheduled_at")
+  startedAt       DateTime?        @map("started_at")
+  pausedAt        DateTime?        @map("paused_at")
+  completedAt     DateTime?        @map("completed_at")
+
+  // Stats (denormalized)
+  totalRecipients Int              @default(0) @map("total_recipients")
+  sentCount       Int              @default(0) @map("sent_count")
+  failedCount     Int              @default(0) @map("failed_count")
+
+  createdById     String           @map("created_by_id")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  template        EmailTemplate?   @relation(fields: [templateId], references: [id])
+  createdBy       User             @relation(fields: [createdById], references: [id])
+  emails          CampaignEmail[]
+
+  @@index([organizationId, status])
+  @@map("email_campaigns")
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+// Individual queued emails
+model CampaignEmail {
+  id              String       @id @default(uuid())
+  campaignId      String       @map("campaign_id")
+  memberId        String       @map("member_id")
+  recipientEmail  String       @map("recipient_email")
+  recipientName   String       @map("recipient_name")
+  status          EmailStatus  @default(PENDING)
+  sentAt          DateTime?    @map("sent_at")
+  errorMessage    String?      @map("error_message")
+  retryCount      Int          @default(0) @map("retry_count")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  campaign        EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  member          Member        @relation(fields: [memberId], references: [id])
+
+  @@index([campaignId, status])
+  @@map("campaign_emails")
+}
+
+enum EmailStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+  SKIPPED
 }

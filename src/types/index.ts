@@ -18,6 +18,8 @@ import type {
   EmailTemplate,
   AuditLog,
   UserNotification,
+  EmailCampaign,
+  CampaignEmail,
   UserRole,
   MemberStatus,
   EmploymentType,
@@ -29,6 +31,8 @@ import type {
   FieldType,
   EmailTemplateCategory,
   AuditAction,
+  CampaignStatus,
+  EmailStatus,
 } from "@prisma/client";
 
 // Re-export Prisma types
@@ -52,6 +56,8 @@ export type {
   EmailTemplate,
   AuditLog,
   UserNotification,
+  EmailCampaign,
+  CampaignEmail,
 };
 
 export {
@@ -66,6 +72,8 @@ export {
   FieldType,
   EmailTemplateCategory,
   AuditAction,
+  CampaignStatus,
+  EmailStatus,
 };
 
 // Extended types with relations
@@ -207,4 +215,32 @@ export interface MemberFilters {
   departmentId?: string;
   employmentType?: EmploymentType;
   search?: string;
+}
+
+// Email Campaign types
+export interface CampaignTargetCriteria {
+  departments?: string[];
+  statuses?: MemberStatus[];
+  employmentTypes?: EmploymentType[];
+}
+
+export interface EmailCampaignWithRelations extends EmailCampaign {
+  template?: EmailTemplate | null;
+  createdBy: User;
+  emails?: CampaignEmail[];
+  _count?: {
+    emails: number;
+  };
+}
+
+export interface CampaignEmailWithMember extends CampaignEmail {
+  member: Member;
+}
+
+export interface CampaignStats {
+  totalRecipients: number;
+  sentCount: number;
+  failedCount: number;
+  pendingCount: number;
+  progress: number;
 }

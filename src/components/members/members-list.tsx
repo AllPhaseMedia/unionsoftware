@@ -8,12 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Table,
   TableBody,
@@ -29,7 +27,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Search, Settings2, ChevronLeft, ChevronRight, Loader2, GripVertical } from "lucide-react";
+import { Plus, Search, Settings2, ChevronLeft, ChevronRight, Loader2, GripVertical, ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuickNote } from "@/components/ui/quick-note";
 import type { Department } from "@/types";
@@ -112,11 +110,17 @@ export function MembersList({ initialMembers, initialTotal, departments }: Membe
   const [isLoading, setIsLoading] = useState(false);
   const [total, setTotal] = useState(initialTotal);
 
-  // Search and filters from URL
+  // Search and filters from URL (now supporting multiple selections)
   const [search, setSearch] = useState(searchParams.get("search") || "");
-  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
-  const [departmentFilter, setDepartmentFilter] = useState(searchParams.get("departmentId") || "all");
-  const [employmentTypeFilter, setEmploymentTypeFilter] = useState(searchParams.get("employmentType") || "all");
+  const [statusFilters, setStatusFilters] = useState<string[]>(
+    searchParams.get("statuses")?.split(",").filter(Boolean) || []
+  );
+  const [departmentFilters, setDepartmentFilters] = useState<string[]>(
+    searchParams.get("departmentIds")?.split(",").filter(Boolean) || []
+  );
+  const [employmentTypeFilters, setEmploymentTypeFilters] = useState<string[]>(
+    searchParams.get("employmentTypes")?.split(",").filter(Boolean) || []
+  );
 
   // Pagination
   const [page, setPage] = useState(parseInt(searchParams.get("page") || "1", 10));
@@ -130,9 +134,9 @@ export function MembersList({ initialMembers, initialTotal, departments }: Membe
   // Track initial filter values to detect actual changes (not just hydration)
   const initialFilters = useRef({
     search: searchParams.get("search") || "",
-    status: searchParams.get("status") || "all",
-    department: searchParams.get("departmentId") || "all",
-    employment: searchParams.get("employmentType") || "all",
+    statuses: searchParams.get("statuses")?.split(",").filter(Boolean) || [],
+    departments: searchParams.get("departmentIds")?.split(",").filter(Boolean) || [],
+    employmentTypes: searchParams.get("employmentTypes")?.split(",").filter(Boolean) || [],
     page: parseInt(searchParams.get("page") || "1", 10),
   });
   const hasFetchedOnce = useRef(false);
@@ -183,9 +187,9 @@ export function MembersList({ initialMembers, initialTotal, departments }: Membe
     try {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
-      if (statusFilter !== "all") params.set("status", statusFilter);
-      if (departmentFilter !== "all") params.set("departmentId", departmentFilter);
-      if (employmentTypeFilter !== "all") params.set("employmentType", employmentTypeFilter);
+      if (statusFilters.length > 0) params.set("statuses", statusFilters.join(","));
+      if (departmentFilters.length > 0) params.set("departmentIds", departmentFilters.join(","));
+      if (employmentTypeFilters.length > 0) params.set("employmentTypes", employmentTypeFilters.join(","));
       params.set("page", String(page));
       params.set("limit", String(pageSize));
 
@@ -198,16 +202,24 @@ export function MembersList({ initialMembers, initialTotal, departments }: Membe
     } finally {
       setIsLoading(false);
     }
-  }, [search, statusFilter, departmentFilter, employmentTypeFilter, page, pageSize]);
+  }, [search, statusFilters, departmentFilters, employmentTypeFilters, page, pageSize]);
+
+  // Helper to compare arrays
+  const arraysEqual = (a: string[], b: string[]) => {
+    if (a.length !== b.length) return false;
+    const sortedA = [...a].sort();
+    const sortedB = [...b].sort();
+    return sortedA.every((v, i) => v === sortedB[i]);
+  };
 
   // Check if filters have actually changed from initial values
   const filtersChanged = () => {
     const init = initialFilters.current;
     return (
       search !== init.search ||
-      statusFilter !== init.status ||
-      departmentFilter !== init.department ||
-      employmentTypeFilter !== init.employment ||
+      !arraysEqual(statusFilters, init.statuses) ||
+      !arraysEqual(departmentFilters, init.departments) ||
+      !arraysEqual(employmentTypeFilters, init.employmentTypes) ||
       page !== init.page
     );
   };
@@ -217,7 +229,7 @@ export function MembersList({ initialMembers, initialTotal, departments }: Membe
     if (hasFetchedOnce.current) {
       setPage(1);
     }
-  }, [search, statusFilter, departmentFilter, employmentTypeFilter]);
+  }, [search, statusFilters, departmentFilters, employmentTypeFilters]);
 
   // Fetch when filters or page change (only if they differ from initial server-rendered values)
   useEffect(() => {
@@ -232,7 +244,7 @@ export function MembersList({ initialMembers, initialTotal, departments }: Membe
     }, 150);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, statusFilter, departmentFilter, employmentTypeFilter, page]);
+  }, [search, statusFilters, departmentFilters, employmentTypeFilters, page]);
 
   // Get ordered and visible columns
   const displayColumns = useMemo(() => {
@@ -352,51 +364,182 @@ export function MembersList({ initialMembers, initialTotal, departments }: Membe
         <div className="relative flex-1 min-w-[250px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search by name, email, member ID..."
+            placeholder="Search all fields..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
           />
         </div>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="MEMBER">Member</SelectItem>
-            <SelectItem value="NON_MEMBER">Non-Member</SelectItem>
-            <SelectItem value="SEVERED">Severed</SelectItem>
-          </SelectContent>
-        </Select>
+        {/* Status Multi-Select */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-[150px] justify-between">
+              <span className="truncate">
+                {statusFilters.length === 0
+                  ? "All Statuses"
+                  : statusFilters.length === 1
+                  ? statusFilters[0].replace("_", " ")
+                  : `${statusFilters.length} selected`}
+              </span>
+              <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[180px] p-2" align="start">
+            <div className="space-y-1">
+              {[
+                { value: "MEMBER", label: "Member" },
+                { value: "NON_MEMBER", label: "Non-Member" },
+                { value: "SEVERED", label: "Severed" },
+              ].map((status) => (
+                <label
+                  key={status.value}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-100 cursor-pointer"
+                >
+                  <Checkbox
+                    checked={statusFilters.includes(status.value)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setStatusFilters([...statusFilters, status.value]);
+                      } else {
+                        setStatusFilters(statusFilters.filter((s) => s !== status.value));
+                      }
+                    }}
+                  />
+                  <span className="text-sm">{status.label}</span>
+                </label>
+              ))}
+              {statusFilters.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full mt-1 text-gray-500"
+                  onClick={() => setStatusFilters([])}
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
 
-        <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Department" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Departments</SelectItem>
-            {departments.map((dept) => (
-              <SelectItem key={dept.id} value={dept.id}>
-                {dept.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Department Multi-Select */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-[180px] justify-between">
+              <span className="truncate">
+                {departmentFilters.length === 0
+                  ? "All Departments"
+                  : departmentFilters.length === 1
+                  ? departments.find((d) => d.id === departmentFilters[0])?.name || "1 selected"
+                  : `${departmentFilters.length} selected`}
+              </span>
+              <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[220px] p-2" align="start">
+            <div className="space-y-1 max-h-[300px] overflow-y-auto">
+              {departments.map((dept) => (
+                <label
+                  key={dept.id}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-100 cursor-pointer"
+                >
+                  <Checkbox
+                    checked={departmentFilters.includes(dept.id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setDepartmentFilters([...departmentFilters, dept.id]);
+                      } else {
+                        setDepartmentFilters(departmentFilters.filter((d) => d !== dept.id));
+                      }
+                    }}
+                  />
+                  <span className="text-sm truncate">{dept.name}</span>
+                </label>
+              ))}
+              {departmentFilters.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full mt-1 text-gray-500"
+                  onClick={() => setDepartmentFilters([])}
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
 
-        <Select value={employmentTypeFilter} onValueChange={setEmploymentTypeFilter}>
-          <SelectTrigger className="w-[170px]">
-            <SelectValue placeholder="Employment" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="FULL_TIME">Full Time</SelectItem>
-            <SelectItem value="PART_TIME">Part Time</SelectItem>
-            <SelectItem value="TEMPORARY">Temporary</SelectItem>
-            <SelectItem value="SEASONAL">Seasonal</SelectItem>
-          </SelectContent>
-        </Select>
+        {/* Employment Type Multi-Select */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-[170px] justify-between">
+              <span className="truncate">
+                {employmentTypeFilters.length === 0
+                  ? "All Types"
+                  : employmentTypeFilters.length === 1
+                  ? employmentTypeFilters[0].replace("_", " ")
+                  : `${employmentTypeFilters.length} selected`}
+              </span>
+              <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[180px] p-2" align="start">
+            <div className="space-y-1">
+              {[
+                { value: "FULL_TIME", label: "Full Time" },
+                { value: "PART_TIME", label: "Part Time" },
+                { value: "TEMPORARY", label: "Temporary" },
+                { value: "SEASONAL", label: "Seasonal" },
+              ].map((type) => (
+                <label
+                  key={type.value}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-100 cursor-pointer"
+                >
+                  <Checkbox
+                    checked={employmentTypeFilters.includes(type.value)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setEmploymentTypeFilters([...employmentTypeFilters, type.value]);
+                      } else {
+                        setEmploymentTypeFilters(employmentTypeFilters.filter((t) => t !== type.value));
+                      }
+                    }}
+                  />
+                  <span className="text-sm">{type.label}</span>
+                </label>
+              ))}
+              {employmentTypeFilters.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full mt-1 text-gray-500"
+                  onClick={() => setEmploymentTypeFilters([])}
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Clear All Filters */}
+        {(statusFilters.length > 0 || departmentFilters.length > 0 || employmentTypeFilters.length > 0) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-gray-500"
+            onClick={() => {
+              setStatusFilters([]);
+              setDepartmentFilters([]);
+              setEmploymentTypeFilters([]);
+            }}
+          >
+            <X className="h-4 w-4 mr-1" />
+            Clear filters
+          </Button>
+        )}
 
         {/* Column Settings Dialog */}
         <Dialog>

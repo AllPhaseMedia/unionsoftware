@@ -14,25 +14,48 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || undefined;
-    const status = searchParams.get("status") || undefined;
-    const departmentId = searchParams.get("departmentId") || undefined;
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "50", 10);
     const skip = (page - 1) * limit;
 
-    const where = {
+    // Support multiple values for filters (comma-separated)
+    const statuses = searchParams.get("statuses")?.split(",").filter(Boolean) || [];
+    const departmentIds = searchParams.get("departmentIds")?.split(",").filter(Boolean) || [];
+    const employmentTypes = searchParams.get("employmentTypes")?.split(",").filter(Boolean) || [];
+
+    // Build where clause
+    const where: Record<string, unknown> = {
       organizationId: dbUser.organizationId,
-      ...(search && {
-        OR: [
-          { firstName: { contains: search, mode: "insensitive" as const } },
-          { lastName: { contains: search, mode: "insensitive" as const } },
-          { email: { contains: search, mode: "insensitive" as const } },
-          { memberId: { contains: search, mode: "insensitive" as const } },
-        ],
-      }),
-      ...(status && { status: status as "MEMBER" | "NON_MEMBER" | "SEVERED" }),
-      ...(departmentId && { departmentId }),
     };
+
+    // Search across all text fields
+    if (search) {
+      where.OR = [
+        { firstName: { contains: search, mode: "insensitive" } },
+        { lastName: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { memberId: { contains: search, mode: "insensitive" } },
+        { cellPhone: { contains: search, mode: "insensitive" } },
+        { homePhone: { contains: search, mode: "insensitive" } },
+        { jobTitle: { contains: search, mode: "insensitive" } },
+        { workLocation: { contains: search, mode: "insensitive" } },
+        { city: { contains: search, mode: "insensitive" } },
+        { state: { contains: search, mode: "insensitive" } },
+        { address: { contains: search, mode: "insensitive" } },
+        { zipCode: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    // Multi-select filters
+    if (statuses.length > 0) {
+      where.status = { in: statuses };
+    }
+    if (departmentIds.length > 0) {
+      where.departmentId = { in: departmentIds };
+    }
+    if (employmentTypes.length > 0) {
+      where.employmentType = { in: employmentTypes };
+    }
 
     // Run count and data queries in parallel
     const [members, total] = await Promise.all([

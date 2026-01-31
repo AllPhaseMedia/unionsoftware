@@ -59,6 +59,10 @@ interface RecipientItem {
   sentAt: string | null;
   errorMessage: string | null;
   retryCount: number;
+  openCount: number;
+  clickCount: number;
+  firstOpenedAt: string | null;
+  lastOpenedAt: string | null;
   member: {
     id: string;
     firstName: string;

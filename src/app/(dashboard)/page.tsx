@@ -22,6 +22,8 @@ async function getDashboardData(organizationId: string) {
     totalMembers,
     grievancesByStatus,
     grievancesByPriority,
+    membersByStatus,
+    membersByDepartment,
     recentGrievances,
     upcomingDeadlines,
   ] = await Promise.all([
@@ -40,6 +42,16 @@ async function getDashboardData(organizationId: string) {
     }),
     prisma.grievance.groupBy({
       by: ["priority"],
+      where: { organizationId },
+      _count: true,
+    }),
+    prisma.member.groupBy({
+      by: ["status"],
+      where: { organizationId },
+      _count: true,
+    }),
+    prisma.member.groupBy({
+      by: ["departmentId"],
       where: { organizationId },
       _count: true,
     }),
@@ -66,6 +78,20 @@ async function getDashboardData(organizationId: string) {
     }),
   ]);
 
+  // Get department names for the member stats
+  const departmentIds = membersByDepartment
+    .map((m) => m.departmentId)
+    .filter((id): id is string => id !== null);
+
+  const departments = departmentIds.length > 0
+    ? await prisma.department.findMany({
+        where: { id: { in: departmentIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+
+  const departmentMap = new Map(departments.map((d) => [d.id, d.name]));
+
   return {
     totalGrievances,
     openGrievances,
@@ -78,6 +104,15 @@ async function getDashboardData(organizationId: string) {
     grievancesByPriority: grievancesByPriority.map((g) => ({
       priority: g.priority,
       count: g._count,
+    })),
+    membersByStatus: membersByStatus.map((m) => ({
+      status: m.status,
+      count: m._count,
+    })),
+    membersByDepartment: membersByDepartment.map((m) => ({
+      departmentId: m.departmentId,
+      departmentName: m.departmentId ? departmentMap.get(m.departmentId) || "Unknown" : "No Department",
+      count: m._count,
     })),
     recentGrievances,
     upcomingDeadlines,
@@ -100,6 +135,18 @@ const priorityColors: Record<string, string> = {
   URGENT: "bg-red-100 text-red-800",
 };
 
+const memberStatusColors: Record<string, string> = {
+  MEMBER: "bg-green-100 text-green-800",
+  NON_MEMBER: "bg-yellow-100 text-yellow-800",
+  SEVERED: "bg-red-100 text-red-800",
+};
+
+const memberStatusLabels: Record<string, string> = {
+  MEMBER: "Member",
+  NON_MEMBER: "Non-Member",
+  SEVERED: "Severed",
+};
+
 export default async function DashboardPage() {
   const dbUser = await getAuthUser();
 
@@ -118,50 +165,58 @@ export default async function DashboardPage() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Total Grievances
-            </CardTitle>
-            <FileText className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.totalGrievances}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Open Grievances
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.openGrievances}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Resolved
-            </CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.resolvedGrievances}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Total Members
-            </CardTitle>
-            <Users className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.totalMembers}</div>
-          </CardContent>
-        </Card>
+        <Link href="/grievances">
+          <Card className="hover:bg-gray-50 transition-colors cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                Total Grievances
+              </CardTitle>
+              <FileText className="h-4 w-4 text-gray-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data.totalGrievances}</div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/grievances?status=OPEN">
+          <Card className="hover:bg-gray-50 transition-colors cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                Open Grievances
+              </CardTitle>
+              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data.openGrievances}</div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/grievances?status=RESOLVED">
+          <Card className="hover:bg-gray-50 transition-colors cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                Resolved
+              </CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data.resolvedGrievances}</div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/members">
+          <Card className="hover:bg-gray-50 transition-colors cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                Total Members
+              </CardTitle>
+              <Users className="h-4 w-4 text-gray-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data.totalMembers}</div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -244,7 +299,7 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Status and Priority Breakdown */}
+      {/* Grievance Status and Priority Breakdown */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -256,12 +311,16 @@ export default async function DashboardPage() {
           <CardContent>
             <div className="space-y-2">
               {data.grievancesByStatus.map((item) => (
-                <div key={item.status} className="flex items-center justify-between">
+                <Link
+                  key={item.status}
+                  href={`/grievances?status=${item.status}`}
+                  className="flex items-center justify-between p-2 rounded hover:bg-gray-50 transition-colors"
+                >
                   <Badge className={statusColors[item.status]}>
                     {item.status.replace("_", " ")}
                   </Badge>
                   <span className="font-medium">{item.count}</span>
-                </div>
+                </Link>
               ))}
             </div>
           </CardContent>
@@ -277,13 +336,72 @@ export default async function DashboardPage() {
           <CardContent>
             <div className="space-y-2">
               {data.grievancesByPriority.map((item) => (
-                <div key={item.priority} className="flex items-center justify-between">
+                <Link
+                  key={item.priority}
+                  href={`/grievances?priority=${item.priority}`}
+                  className="flex items-center justify-between p-2 rounded hover:bg-gray-50 transition-colors"
+                >
                   <Badge className={priorityColors[item.priority]}>
                     {item.priority}
                   </Badge>
                   <span className="font-medium">{item.count}</span>
-                </div>
+                </Link>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Member Stats */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Members by Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {data.membersByStatus.map((item) => (
+                <Link
+                  key={item.status}
+                  href={`/members?statuses=${item.status}`}
+                  className="flex items-center justify-between p-2 rounded hover:bg-gray-50 transition-colors"
+                >
+                  <Badge className={memberStatusColors[item.status]}>
+                    {memberStatusLabels[item.status]}
+                  </Badge>
+                  <span className="font-medium">{item.count}</span>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Members by Department
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {data.membersByDepartment.length === 0 ? (
+                <p className="text-gray-500 text-sm">No members yet.</p>
+              ) : (
+                data.membersByDepartment.map((item) => (
+                  <Link
+                    key={item.departmentId || "none"}
+                    href={item.departmentId ? `/members?departmentIds=${item.departmentId}` : "/members"}
+                    className="flex items-center justify-between p-2 rounded hover:bg-gray-50 transition-colors"
+                  >
+                    <span className="text-sm text-gray-700">{item.departmentName}</span>
+                    <span className="font-medium">{item.count}</span>
+                  </Link>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

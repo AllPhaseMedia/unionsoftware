@@ -218,7 +218,7 @@ export function StepsTimeline({ steps, grievanceId, onStepUpdate }: StepsTimelin
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <h4 className="font-medium">
-                          Step {step.stepNumber}: {step.name}
+                          {step.name}
                         </h4>
                         {step.description && (
                           <p className="text-sm text-gray-500 mt-1">
@@ -363,7 +363,7 @@ export function StepsTimeline({ steps, grievanceId, onStepUpdate }: StepsTimelin
                             </DialogTrigger>
                             <DialogContent>
                               <DialogHeader>
-                                <DialogTitle>Complete Step {step.stepNumber}</DialogTitle>
+                                <DialogTitle>Complete: {step.name}</DialogTitle>
                               </DialogHeader>
                               <div className="space-y-4 py-4">
                                 <div className="space-y-2">

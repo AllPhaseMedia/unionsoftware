@@ -235,13 +235,15 @@ export default async function DisciplinaryDetailPage({ params }: PageProps) {
                 </div>
               )}
 
-              <div className="flex items-start gap-3">
-                <Calendar className="h-4 w-4 text-gray-400 mt-1" />
-                <div>
-                  <p className="text-sm text-gray-500">Incident Date</p>
-                  <p>{format(new Date(disciplinaryCase.incidentDate), "MMMM d, yyyy")}</p>
+              {disciplinaryCase.incidentDate && (
+                <div className="flex items-start gap-3">
+                  <Calendar className="h-4 w-4 text-gray-400 mt-1" />
+                  <div>
+                    <p className="text-sm text-gray-500">Incident Date</p>
+                    <p>{format(new Date(disciplinaryCase.incidentDate), "MMMM d, yyyy")}</p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex items-start gap-3">
                 <Calendar className="h-4 w-4 text-gray-400 mt-1" />

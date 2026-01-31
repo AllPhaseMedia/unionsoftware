@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { contractSchema } from "@/lib/validations";
+import { contractApiSchema } from "@/lib/validations";
 
 export async function GET() {
   try {
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const validatedData = contractSchema.parse(body);
+    const validatedData = contractApiSchema.parse(body);
 
     const contract = await prisma.contract.create({
       data: {

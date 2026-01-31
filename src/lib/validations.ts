@@ -140,6 +140,12 @@ export const contractSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
+// Schema for API requests (accepts date as string)
+export const contractApiSchema = contractSchema.extend({
+  effectiveDate: z.union([z.date(), z.string().transform((val) => new Date(val))]),
+  expirationDate: z.union([z.date(), z.string().transform((val) => new Date(val))]),
+});
+
 // Contract article schema
 export const contractArticleSchema = z.object({
   articleNumber: z.string().min(1, "Article number is required"),

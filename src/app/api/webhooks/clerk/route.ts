@@ -87,9 +87,14 @@ export async function POST(req: Request) {
       case "organizationMembership.created": {
         const { organization, public_user_data, role } = evt.data;
 
-        // Find the organization in our database
+        // Find the organization in our database with user count
         const org = await prisma.organization.findUnique({
           where: { clerkOrgId: organization.id },
+          include: {
+            _count: {
+              select: { users: { where: { isActive: true } } },
+            },
+          },
         });
 
         if (!org) {
@@ -116,8 +121,15 @@ export async function POST(req: Request) {
         });
 
         if (existingUser) {
-          // Reactivate if inactive
+          // Check limit before reactivating (only count if they're currently inactive)
           if (!existingUser.isActive) {
+            if (org._count.users >= org.maxUsers) {
+              console.warn(
+                `Organization ${org.name} at user limit (${org._count.users}/${org.maxUsers}). Cannot reactivate user.`
+              );
+              // User stays inactive - they won't be able to access the app
+              break;
+            }
             await prisma.user.update({
               where: { id: existingUser.id },
               data: { isActive: true, role: userRole },
@@ -125,7 +137,33 @@ export async function POST(req: Request) {
             console.log(`Reactivated user: ${existingUser.id}`);
           }
         } else {
-          // Create new user
+          // Check user limit before creating new user
+          if (org._count.users >= org.maxUsers) {
+            console.warn(
+              `Organization ${org.name} at user limit (${org._count.users}/${org.maxUsers}). User will be created as inactive.`
+            );
+            // Create user as inactive - they won't be able to access the app
+            const firstName = public_user_data.first_name || "";
+            const lastName = public_user_data.last_name || "";
+            const name = `${firstName} ${lastName}`.trim() || "Unknown User";
+
+            await prisma.user.create({
+              data: {
+                clerkUserId: public_user_data.user_id,
+                email: public_user_data.identifier,
+                name: name,
+                organizationId: org.id,
+                role: userRole,
+                isActive: false, // Inactive due to limit
+              },
+            });
+            console.log(
+              `Created INACTIVE user (limit reached): ${public_user_data.identifier} in org ${org.name}`
+            );
+            break;
+          }
+
+          // Create new user (within limit)
           const firstName = public_user_data.first_name || "";
           const lastName = public_user_data.last_name || "";
           const name = `${firstName} ${lastName}`.trim() || "Unknown User";
@@ -142,7 +180,7 @@ export async function POST(req: Request) {
           });
 
           console.log(
-            `Created user: ${public_user_data.identifier} in org ${org.name}`
+            `Created user: ${public_user_data.identifier} in org ${org.name} (${org._count.users + 1}/${org.maxUsers})`
           );
         }
         break;

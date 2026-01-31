@@ -37,7 +37,10 @@ export default async function DashboardLayout({
   const dbUser = await getAuthUserWithOrg();
 
   if (!dbUser) {
-    redirect("/sign-in");
+    // User is authenticated with Clerk but not in our database yet
+    // This can happen if webhook hasn't synced or org was just created
+    // Redirect to create-organization to trigger the webhook flow
+    redirect("/create-organization");
   }
 
   // Fetch appearance settings server-side

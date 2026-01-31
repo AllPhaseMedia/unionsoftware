@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { contractArticleSchema } from "@/lib/validations";
 
@@ -10,18 +10,7 @@ interface RouteParams {
 export async function POST(request: Request, { params }: RouteParams) {
   try {
     const { id: contractId } = await params;
-    const supabase = await createClient();
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-
-    if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const dbUser = await prisma.user.findUnique({
-      where: { supabaseUserId: authUser.id },
-    });
+    const dbUser = await getAuthUser();
 
     if (!dbUser || dbUser.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });

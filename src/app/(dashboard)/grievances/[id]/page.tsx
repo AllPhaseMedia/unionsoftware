@@ -57,7 +57,7 @@ export default async function GrievanceDetailPage({ params }: PageProps) {
   const dbUser = await getAuthUser();
 
   if (!dbUser) {
-    redirect("/login");
+    redirect("/sign-in");
   }
 
   const grievance = await prisma.grievance.findFirst({

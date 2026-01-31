@@ -1,25 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MemberForm } from "@/components/members/member-form";
 import prisma from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export default async function NewMemberPage() {
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-
-  if (!authUser) {
-    redirect("/login");
-  }
-
-  const dbUser = await prisma.user.findUnique({
-    where: { supabaseUserId: authUser.id },
-  });
+  const dbUser = await getAuthUser();
 
   if (!dbUser) {
-    redirect("/login");
+    redirect("/sign-in");
   }
 
   const departments = await prisma.department.findMany({

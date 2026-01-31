@@ -10,11 +10,12 @@ datasource db {
 
 // Multi-tenancy
 model Organization {
-  id        String   @id @default(uuid())
-  name      String
-  slug      String   @unique
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id         String   @id @default(uuid())
+  clerkOrgId String   @unique @map("clerk_org_id")
+  name       String
+  slug       String   @unique
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
   users           User[]
   members         Member[]
@@ -33,15 +34,15 @@ model Organization {
 }
 
 model User {
-  id              String   @id @default(uuid())
-  supabaseUserId  String   @unique @map("supabase_user_id")
-  email           String
-  name            String
-  role            UserRole @default(REPRESENTATIVE)
-  organizationId  String   @map("organization_id")
-  isActive        Boolean  @default(true) @map("is_active")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(uuid())
+  clerkUserId    String   @map("clerk_user_id")
+  email          String
+  name           String
+  role           UserRole @default(REPRESENTATIVE)
+  organizationId String   @map("organization_id")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   organization         Organization          @relation(fields: [organizationId], references: [id])
   assignedGrievances   Grievance[]           @relation("AssignedRepresentative")
@@ -54,6 +55,7 @@ model User {
   completedSteps       GrievanceStep[]       @relation("StepCompletedBy")
   createdCampaigns     EmailCampaign[]
 
+  @@unique([clerkUserId, organizationId])
   @@unique([email, organizationId])
   @@map("users")
 }
@@ -210,15 +212,15 @@ enum StepStatus {
 }
 
 model StepTemplate {
-  id              String   @id @default(uuid())
-  organizationId  String   @map("organization_id")
-  stepNumber      Int      @map("step_number")
-  name            String
-  description     String?
-  defaultDays     Int?     @map("default_days")
-  isActive        Boolean  @default(true) @map("is_active")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id                  String   @id @default(uuid())
+  organizationId      String   @map("organization_id")
+  stepNumber          Int      @map("step_number")
+  name                String
+  description         String?
+  defaultDeadlineDays Int?     @map("default_deadline_days")
+  isActive            Boolean  @default(true) @map("is_active")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
   organization    Organization @relation(fields: [organizationId], references: [id])
 

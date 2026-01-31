@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -101,21 +101,10 @@ const priorityColors: Record<string, string> = {
 };
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-
-  if (!authUser) {
-    redirect("/login");
-  }
-
-  const dbUser = await prisma.user.findUnique({
-    where: { supabaseUserId: authUser.id },
-  });
+  const dbUser = await getAuthUser();
 
   if (!dbUser) {
-    redirect("/login");
+    redirect("/sign-in");
   }
 
   const data = await getDashboardData(dbUser.organizationId);

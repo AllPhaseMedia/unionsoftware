@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
 import { format } from "date-fns";
 
@@ -64,22 +65,10 @@ function replaceTemplateVariables(template: string, data: Record<string, unknown
 export async function POST(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-
-    if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const dbUser = await prisma.user.findUnique({
-      where: { supabaseUserId: authUser.id },
-      include: { organization: true },
-    });
+    const dbUser = await getAuthUser();
 
     if (!dbUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();

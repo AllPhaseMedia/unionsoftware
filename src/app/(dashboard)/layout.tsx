@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
 import { getAuthUserWithOrg } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
@@ -23,10 +24,20 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { userId, orgId } = await auth();
+
+  if (!userId) {
+    redirect("/sign-in");
+  }
+
+  if (!orgId) {
+    redirect("/create-organization");
+  }
+
   const dbUser = await getAuthUserWithOrg();
 
   if (!dbUser) {
-    redirect("/login");
+    redirect("/sign-in");
   }
 
   // Fetch appearance settings server-side

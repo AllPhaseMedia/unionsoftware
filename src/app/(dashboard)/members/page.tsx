@@ -7,7 +7,7 @@ export default async function MembersPage() {
   const dbUser = await getAuthUser();
 
   if (!dbUser) {
-    redirect("/login");
+    redirect("/sign-in");
   }
 
   // Fetch initial data in parallel

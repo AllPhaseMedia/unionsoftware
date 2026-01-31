@@ -7,7 +7,7 @@ export default async function CampaignsPage() {
   const dbUser = await getAuthUser();
 
   if (!dbUser) {
-    redirect("/login");
+    redirect("/sign-in");
   }
 
   const [campaigns, total] = await Promise.all([

@@ -1,13 +1,15 @@
+import { auth } from "@clerk/nextjs/server";
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
+
+export type UserRole = "ADMIN" | "REPRESENTATIVE" | "VIEWER";
 
 export interface AuthUser {
   id: string;
-  supabaseUserId: string;
+  clerkUserId: string;
   email: string;
   name: string;
-  role: "ADMIN" | "REPRESENTATIVE" | "VIEWER";
+  role: UserRole;
   organizationId: string;
   isActive: boolean;
 }
@@ -15,43 +17,39 @@ export interface AuthUser {
 export interface AuthUserWithOrg extends AuthUser {
   organization: {
     id: string;
+    clerkOrgId: string;
     name: string;
     slug: string;
   };
 }
 
-// Cached Supabase auth check - shared by all auth functions
-// This ensures we only call Supabase once per request
-// Using getSession() instead of getUser() for speed - session is read from cookie
-// The middleware already validates the session, so this is safe
-const getSupabaseUserId = cache(async (): Promise<string | null> => {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    return session?.user?.id || null;
-  } catch (error) {
-    console.error("Error getting Supabase session:", error);
-    return null;
-  }
-});
+// Map Clerk organization role to app role
+function mapClerkRole(clerkRole: string | null | undefined): UserRole {
+  if (clerkRole === "org:admin") return "ADMIN";
+  if (clerkRole === "org:representative") return "REPRESENTATIVE";
+  return "VIEWER";
+}
 
 // Internal: fetch user with org - always includes org data, cached once per request
 const fetchUserWithOrg = cache(async (): Promise<AuthUserWithOrg | null> => {
   try {
-    const supabaseUserId = await getSupabaseUserId();
+    const { userId, orgId, orgRole } = await auth();
 
-    if (!supabaseUserId) {
+    if (!userId || !orgId) {
       return null;
     }
 
-    const dbUser = await prisma.user.findUnique({
-      where: { supabaseUserId },
+    // Get user from database (synced via webhook)
+    const dbUser = await prisma.user.findFirst({
+      where: {
+        clerkUserId: userId,
+        organization: {
+          clerkOrgId: orgId,
+        },
+      },
       select: {
         id: true,
-        supabaseUserId: true,
+        clerkUserId: true,
         email: true,
         name: true,
         role: true,
@@ -60,6 +58,7 @@ const fetchUserWithOrg = cache(async (): Promise<AuthUserWithOrg | null> => {
         organization: {
           select: {
             id: true,
+            clerkOrgId: true,
             name: true,
             slug: true,
           },
@@ -67,11 +66,17 @@ const fetchUserWithOrg = cache(async (): Promise<AuthUserWithOrg | null> => {
       },
     });
 
-    if (!dbUser) {
+    if (!dbUser || !dbUser.isActive) {
       return null;
     }
 
-    return dbUser as AuthUserWithOrg;
+    // Use Clerk role as source of truth, falling back to DB role
+    const role = mapClerkRole(orgRole) || dbUser.role;
+
+    return {
+      ...dbUser,
+      role,
+    } as AuthUserWithOrg;
   } catch (error) {
     console.error("Error getting auth user:", error);
     return null;
@@ -89,9 +94,11 @@ export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
 });
 
 // Get user with organization - used by dashboard layout
-export const getAuthUserWithOrg = cache(async (): Promise<AuthUserWithOrg | null> => {
-  return fetchUserWithOrg();
-});
+export const getAuthUserWithOrg = cache(
+  async (): Promise<AuthUserWithOrg | null> => {
+    return fetchUserWithOrg();
+  }
+);
 
 // Helper to require authentication - throws if not authenticated
 export const requireAuth = cache(async (): Promise<AuthUser> => {

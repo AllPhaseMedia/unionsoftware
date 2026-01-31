@@ -61,9 +61,9 @@ export function Sidebar({ appearance = {} }: SidebarProps) {
 
   const settingsItems = [
     { title: "Profile", href: "/settings/profile", icon: User },
+    { title: "Organization", href: "/settings/organization", icon: UserCog },
     { title: "Appearance", href: "/settings/appearance", icon: Palette },
     { title: "Departments", href: "/settings/departments", icon: Building2 },
-    { title: "Users", href: "/settings/users", icon: UserCog },
     { title: "Grievance Settings", href: "/settings/grievance", icon: Briefcase },
     { title: "Custom Fields", href: "/settings/custom-fields", icon: FormInput },
     { title: "PDF Templates", href: "/settings/pdf-templates", icon: FileType },

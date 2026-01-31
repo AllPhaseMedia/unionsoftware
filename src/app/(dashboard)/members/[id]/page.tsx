@@ -12,7 +12,7 @@ export default async function MemberDetailPage({ params }: PageProps) {
   const dbUser = await getAuthUser();
 
   if (!dbUser) {
-    redirect("/login");
+    redirect("/sign-in");
   }
 
   const member = await prisma.member.findFirst({

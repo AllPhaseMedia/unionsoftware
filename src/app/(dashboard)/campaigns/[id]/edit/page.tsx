@@ -11,7 +11,7 @@ export default async function EditCampaignPage({ params }: Props) {
   const dbUser = await getAuthUser();
 
   if (!dbUser) {
-    redirect("/login");
+    redirect("/sign-in");
   }
 
   if (dbUser.role !== "ADMIN") {

@@ -19,6 +19,7 @@ import {
   Briefcase,
   Send,
   User,
+  Megaphone,
 } from "lucide-react";
 import { useState } from "react";
 import { SheetClose } from "@/components/ui/sheet";
@@ -55,14 +56,15 @@ export function MobileSidebar({ appearance = {} }: MobileSidebarProps) {
     { title: "Dashboard", href: "/", icon: LayoutDashboard },
     { title: "Grievances", href: "/grievances", icon: FileText },
     { title: "Members", href: "/members", icon: Users },
+    { title: "Campaigns", href: "/campaigns", icon: Megaphone },
     { title: "Reports", href: "/reports", icon: BarChart3 },
   ];
 
   const settingsItems = [
     { title: "Profile", href: "/settings/profile", icon: User },
+    { title: "Organization", href: "/settings/organization", icon: UserCog },
     { title: "Appearance", href: "/settings/appearance", icon: Palette },
     { title: "Departments", href: "/settings/departments", icon: Building2 },
-    { title: "Users", href: "/settings/users", icon: UserCog },
     { title: "Grievance Settings", href: "/settings/grievance", icon: Briefcase },
     { title: "Custom Fields", href: "/settings/custom-fields", icon: FormInput },
     { title: "PDF Templates", href: "/settings/pdf-templates", icon: FileType },

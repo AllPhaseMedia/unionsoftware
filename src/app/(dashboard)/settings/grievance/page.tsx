@@ -179,7 +179,7 @@ export default function GrievanceSettingsPage() {
         stepNumber: step.stepNumber,
         name: step.name,
         description: step.description || "",
-        defaultDays: step.defaultDays?.toString() || "",
+        defaultDays: step.defaultDeadlineDays?.toString() || "",
         isActive: step.isActive,
       });
     } else {
@@ -212,8 +212,11 @@ export default function GrievanceSettingsPage() {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...stepFormData,
-          defaultDays: stepFormData.defaultDays ? parseInt(stepFormData.defaultDays) : null,
+          stepNumber: stepFormData.stepNumber,
+          name: stepFormData.name,
+          description: stepFormData.description,
+          defaultDeadlineDays: stepFormData.defaultDays ? parseInt(stepFormData.defaultDays) : null,
+          isActive: stepFormData.isActive,
         }),
       });
 
@@ -566,7 +569,7 @@ export default function GrievanceSettingsPage() {
                         <TableCell className="text-gray-500 max-w-[200px] truncate">
                           {step.description || "-"}
                         </TableCell>
-                        <TableCell>{step.defaultDays || "-"}</TableCell>
+                        <TableCell>{step.defaultDeadlineDays || "-"}</TableCell>
                         <TableCell>
                           <Badge variant={step.isActive ? "default" : "secondary"}>
                             {step.isActive ? "Active" : "Inactive"}

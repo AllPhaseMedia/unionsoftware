@@ -114,7 +114,7 @@ export const stepTemplateSchema = z.object({
   stepNumber: z.number().int().positive(),
   name: z.string().min(1, "Step name is required"),
   description: z.string().optional(),
-  defaultDays: z.number().int().positive().optional().nullable(),
+  defaultDeadlineDays: z.number().int().positive().optional().nullable(),
   isActive: z.boolean().default(true),
 });
 

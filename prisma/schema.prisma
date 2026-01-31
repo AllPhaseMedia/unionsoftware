@@ -92,6 +92,9 @@ model Member {
   notes         MemberNote[]
   documents     MemberDocument[]
 
+  @@index([organizationId, lastName, firstName])
+  @@index([organizationId, status])
+  @@index([organizationId, departmentId])
   @@map("members")
 }
 
@@ -144,6 +147,10 @@ model Grievance {
   relatedTo           GrievanceRelation[]     @relation("RelatedTo")
 
   @@unique([grievanceNumber, organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, priority])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, departmentId])
   @@map("grievances")
 }
 

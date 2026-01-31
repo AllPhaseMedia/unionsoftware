@@ -1,52 +1,78 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
+import { getAuthUser } from "@/lib/auth";
 import { memberSchema } from "@/lib/validations";
 import { ZodError } from "zod";
 
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-
-    if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const dbUser = await prisma.user.findUnique({
-      where: { supabaseUserId: authUser.id },
-    });
+    const dbUser = await getAuthUser();
 
     if (!dbUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || undefined;
     const status = searchParams.get("status") || undefined;
     const departmentId = searchParams.get("departmentId") || undefined;
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const skip = (page - 1) * limit;
 
-    const members = await prisma.member.findMany({
-      where: {
-        organizationId: dbUser.organizationId,
-        ...(search && {
-          OR: [
-            { firstName: { contains: search, mode: "insensitive" } },
-            { lastName: { contains: search, mode: "insensitive" } },
-            { email: { contains: search, mode: "insensitive" } },
-            { memberId: { contains: search, mode: "insensitive" } },
-          ],
-        }),
-        ...(status && { status: status as "MEMBER" | "NON_MEMBER" | "SEVERED" }),
-        ...(departmentId && { departmentId }),
+    const where = {
+      organizationId: dbUser.organizationId,
+      ...(search && {
+        OR: [
+          { firstName: { contains: search, mode: "insensitive" as const } },
+          { lastName: { contains: search, mode: "insensitive" as const } },
+          { email: { contains: search, mode: "insensitive" as const } },
+          { memberId: { contains: search, mode: "insensitive" as const } },
+        ],
+      }),
+      ...(status && { status: status as "MEMBER" | "NON_MEMBER" | "SEVERED" }),
+      ...(departmentId && { departmentId }),
+    };
+
+    // Run count and data queries in parallel
+    const [members, total] = await Promise.all([
+      prisma.member.findMany({
+        where,
+        select: {
+          id: true,
+          memberId: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          cellPhone: true,
+          homePhone: true,
+          jobTitle: true,
+          workLocation: true,
+          status: true,
+          employmentType: true,
+          hireDate: true,
+          dateOfBirth: true,
+          city: true,
+          state: true,
+          department: { select: { id: true, name: true } },
+        },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+        skip,
+        take: limit,
+      }),
+      prisma.member.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      success: true,
+      data: members,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
-      include: { department: true },
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     });
-
-    return NextResponse.json({ success: true, data: members });
   } catch (error) {
     console.error("Error fetching members:", error);
     return NextResponse.json(
@@ -58,21 +84,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-
-    if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const dbUser = await prisma.user.findUnique({
-      where: { supabaseUserId: authUser.id },
-    });
+    const dbUser = await getAuthUser();
 
     if (!dbUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();

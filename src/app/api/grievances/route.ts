@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
+import { getAuthUser } from "@/lib/auth";
 import { grievanceApiSchema } from "@/lib/validations";
 
 interface CaseNumberSettings {
@@ -77,55 +77,71 @@ async function generateGrievanceNumber(organizationId: string): Promise<string> 
 
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-
-    if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const dbUser = await prisma.user.findUnique({
-      where: { supabaseUserId: authUser.id },
-    });
+    const dbUser = await getAuthUser();
 
     if (!dbUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") || undefined;
     const priority = searchParams.get("priority") || undefined;
     const departmentId = searchParams.get("departmentId") || undefined;
-
     const search = searchParams.get("search") || undefined;
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "100", 10);
+    const skip = (page - 1) * limit;
 
-    const grievances = await prisma.grievance.findMany({
-      where: {
-        organizationId: dbUser.organizationId,
-        ...(status && { status: status as "OPEN" | "IN_PROGRESS" | "PENDING_RESPONSE" | "RESOLVED" | "CLOSED" | "WITHDRAWN" }),
-        ...(priority && { priority: priority as "LOW" | "MEDIUM" | "HIGH" | "URGENT" }),
-        ...(departmentId && { departmentId }),
-        ...(search && {
-          OR: [
-            { grievanceNumber: { contains: search, mode: "insensitive" as const } },
-            { description: { contains: search, mode: "insensitive" as const } },
-          ],
-        }),
-      },
-      include: {
-        member: true,
-        representative: true,
-        department: true,
-        steps: {
-          orderBy: { stepNumber: "asc" },
+    const where = {
+      organizationId: dbUser.organizationId,
+      ...(status && { status: status as "OPEN" | "IN_PROGRESS" | "PENDING_RESPONSE" | "RESOLVED" | "CLOSED" | "WITHDRAWN" }),
+      ...(priority && { priority: priority as "LOW" | "MEDIUM" | "HIGH" | "URGENT" }),
+      ...(departmentId && { departmentId }),
+      ...(search && {
+        OR: [
+          { grievanceNumber: { contains: search, mode: "insensitive" as const } },
+          { description: { contains: search, mode: "insensitive" as const } },
+        ],
+      }),
+    };
+
+    // Run count and data queries in parallel
+    const [grievances, total] = await Promise.all([
+      prisma.grievance.findMany({
+        where,
+        select: {
+          id: true,
+          grievanceNumber: true,
+          description: true,
+          status: true,
+          priority: true,
+          filingDate: true,
+          createdAt: true,
+          member: { select: { id: true, firstName: true, lastName: true } },
+          representative: { select: { id: true, name: true } },
+          department: { select: { id: true, name: true } },
+          steps: {
+            select: { id: true, stepNumber: true, status: true, deadline: true },
+            orderBy: { stepNumber: "asc" },
+          },
         },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.grievance.count({ where }),
+    ]);
 
-    return NextResponse.json({ success: true, data: grievances });
+    return NextResponse.json({
+      success: true,
+      data: grievances,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
     console.error("Error fetching grievances:", error);
     return NextResponse.json(
@@ -137,21 +153,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-
-    if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const dbUser = await prisma.user.findUnique({
-      where: { supabaseUserId: authUser.id },
-    });
+    const dbUser = await getAuthUser();
 
     if (!dbUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();

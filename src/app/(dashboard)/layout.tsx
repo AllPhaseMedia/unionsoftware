@@ -1,6 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { getAuthUserWithOrg } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
@@ -23,28 +23,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-
-  if (!authUser) {
-    redirect("/login");
-  }
-
-  // Get the user and organization from the database
-  const dbUser = await prisma.user.findUnique({
-    where: { supabaseUserId: authUser.id },
-    include: {
-      organization: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        },
-      },
-    },
-  });
+  const dbUser = await getAuthUserWithOrg();
 
   if (!dbUser) {
     redirect("/login");

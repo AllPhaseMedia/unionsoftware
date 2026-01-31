@@ -29,10 +29,12 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Refresh session if expired
+  // Get session from cookie (fast, no network call)
+  // The session is automatically refreshed by the Supabase client if needed
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user;
 
   // Define public routes that don't require authentication
   const publicRoutes = ["/login", "/register", "/forgot-password", "/reset-password"];

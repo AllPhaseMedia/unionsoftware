@@ -1,6 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
+import { getAuthUser } from "@/lib/auth";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,18 +54,7 @@ const outcomeColors: Record<string, string> = {
 
 export default async function GrievanceDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-
-  if (!authUser) {
-    redirect("/login");
-  }
-
-  const dbUser = await prisma.user.findUnique({
-    where: { supabaseUserId: authUser.id },
-  });
+  const dbUser = await getAuthUser();
 
   if (!dbUser) {
     redirect("/login");

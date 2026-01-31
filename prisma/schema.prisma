@@ -19,18 +19,21 @@ model Organization {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
-  users           User[]
-  members         Member[]
-  departments     Department[]
-  grievances      Grievance[]
-  contracts       Contract[]
-  stepTemplates   StepTemplate[]
-  customFields    CustomField[]
-  pdfTemplates    PdfTemplate[]
-  emailTemplates  EmailTemplate[]
-  systemSettings  SystemSetting[]
-  textSnippets    TextSnippet[]
-  emailCampaigns  EmailCampaign[]
+  users                       User[]
+  members                     Member[]
+  departments                 Department[]
+  grievances                  Grievance[]
+  contracts                   Contract[]
+  stepTemplates               StepTemplate[]
+  customFields                CustomField[]
+  pdfTemplates                PdfTemplate[]
+  emailTemplates              EmailTemplate[]
+  systemSettings              SystemSetting[]
+  textSnippets                TextSnippet[]
+  emailCampaigns              EmailCampaign[]
+  disciplinaryCases           DisciplinaryCase[]
+  disciplinaryStepTemplates   DisciplinaryStepTemplate[]
+  disciplinarySnippets        DisciplinarySnippet[]
 
   @@map("organizations")
 }
@@ -46,16 +49,21 @@ model User {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  organization         Organization          @relation(fields: [organizationId], references: [id])
-  assignedGrievances   Grievance[]           @relation("AssignedRepresentative")
-  createdGrievances    Grievance[]           @relation("CreatedBy")
-  grievanceNotes       GrievanceNote[]
-  grievanceMessages    GrievanceMessage[]
-  memberNotes          MemberNote[]
-  notifications        UserNotification[]
-  auditLogs            AuditLog[]
-  completedSteps       GrievanceStep[]       @relation("StepCompletedBy")
-  createdCampaigns     EmailCampaign[]
+  organization                  Organization          @relation(fields: [organizationId], references: [id])
+  assignedGrievances            Grievance[]           @relation("AssignedRepresentative")
+  createdGrievances             Grievance[]           @relation("CreatedBy")
+  grievanceNotes                GrievanceNote[]
+  grievanceMessages             GrievanceMessage[]
+  memberNotes                   MemberNote[]
+  notifications                 UserNotification[]
+  auditLogs                     AuditLog[]
+  completedSteps                GrievanceStep[]       @relation("StepCompletedBy")
+  createdCampaigns              EmailCampaign[]
+  assignedDisciplinaryCases     DisciplinaryCase[]    @relation("DisciplinaryRepresentative")
+  createdDisciplinaryCases      DisciplinaryCase[]    @relation("DisciplinaryCreatedBy")
+  disciplinaryNotes             DisciplinaryNote[]
+  disciplinaryMessages          DisciplinaryMessage[]
+  completedDisciplinarySteps    DisciplinaryStep[]    @relation("DisciplinaryStepCompletedBy")
 
   @@unique([clerkUserId, organizationId])
   @@unique([email, organizationId])
@@ -92,12 +100,13 @@ model Member {
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
 
-  organization    Organization      @relation(fields: [organizationId], references: [id])
-  department      Department?       @relation(fields: [departmentId], references: [id])
-  grievances      Grievance[]
-  notes           MemberNote[]
-  documents       MemberDocument[]
-  campaignEmails  CampaignEmail[]
+  organization        Organization        @relation(fields: [organizationId], references: [id])
+  department          Department?         @relation(fields: [departmentId], references: [id])
+  grievances          Grievance[]
+  notes               MemberNote[]
+  documents           MemberDocument[]
+  campaignEmails      CampaignEmail[]
+  disciplinaryCases   DisciplinaryCase[]
 
   @@index([organizationId, lastName, firstName])
   @@index([organizationId, status])
@@ -185,6 +194,40 @@ enum GrievanceOutcome {
   PENDING_ARBITRATION
 }
 
+// Disciplinary Enums
+enum DisciplinaryStatus {
+  OPEN
+  IN_PROGRESS
+  PENDING_REVIEW
+  RESOLVED
+  CLOSED
+}
+
+enum DisciplinaryOutcome {
+  NO_ACTION
+  VERBAL_WARNING
+  WRITTEN_WARNING
+  SUSPENSION
+  TERMINATION
+  OTHER
+}
+
+enum DisciplinaryType {
+  ATTENDANCE
+  PERFORMANCE
+  CONDUCT
+  POLICY_VIOLATION
+  SAFETY
+  OTHER
+}
+
+enum DisciplinarySnippetCategory {
+  INVESTIGATION
+  INTERVIEW
+  RESOLUTION
+  GENERAL
+}
+
 model GrievanceStep {
   id            String      @id @default(uuid())
   grievanceId   String      @map("grievance_id")
@@ -239,9 +282,10 @@ model Department {
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  organization    Organization @relation(fields: [organizationId], references: [id])
-  members         Member[]
-  grievances      Grievance[]
+  organization        Organization         @relation(fields: [organizationId], references: [id])
+  members             Member[]
+  grievances          Grievance[]
+  disciplinaryCases   DisciplinaryCase[]
 
   @@unique([name, organizationId])
   @@map("departments")
@@ -360,8 +404,9 @@ model ContractArticle {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  contract      Contract                     @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  violations    GrievanceContractViolation[]
+  contract                Contract                          @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  violations              GrievanceContractViolation[]
+  disciplinaryViolations  DisciplinaryContractViolation[]
 
   @@map("contract_articles")
 }
@@ -655,4 +700,160 @@ model EmailClick {
 
   @@index([emailId])
   @@map("email_clicks")
+}
+
+// ============================================
+// DISCIPLINARY SYSTEM MODELS
+// ============================================
+
+model DisciplinaryStepTemplate {
+  id                  String   @id @default(uuid())
+  organizationId      String   @map("organization_id")
+  stepNumber          Int      @map("step_number")
+  name                String
+  description         String?
+  defaultDeadlineDays Int?     @map("default_deadline_days")
+  isActive            Boolean  @default(true) @map("is_active")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("disciplinary_step_templates")
+}
+
+model DisciplinaryCase {
+  id                  String              @id @default(uuid())
+  organizationId      String              @map("organization_id")
+  caseNumber          String              @map("case_number")
+  memberId            String?             @map("member_id")
+  representativeId    String?             @map("representative_id")
+  createdById         String              @map("created_by_id")
+  departmentId        String?             @map("department_id")
+  type                DisciplinaryType    @default(OTHER)
+  description         String
+  incidentDate        DateTime?           @map("incident_date")
+  memberJobTitle      String?             @map("member_job_title")
+  supervisorName      String?             @map("supervisor_name")
+  status              DisciplinaryStatus  @default(OPEN)
+  priority            Priority            @default(MEDIUM)
+  outcome             DisciplinaryOutcome?
+  outcomeNotes        String?             @map("outcome_notes")
+  filingDate          DateTime            @default(now()) @map("filing_date")
+  customFields        Json?               @map("custom_fields")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  organization        Organization                    @relation(fields: [organizationId], references: [id])
+  member              Member?                         @relation(fields: [memberId], references: [id])
+  representative      User?                           @relation("DisciplinaryRepresentative", fields: [representativeId], references: [id])
+  createdBy           User                            @relation("DisciplinaryCreatedBy", fields: [createdById], references: [id])
+  department          Department?                     @relation(fields: [departmentId], references: [id])
+  steps               DisciplinaryStep[]
+  notes               DisciplinaryNote[]
+  messages            DisciplinaryMessage[]
+  documents           DisciplinaryDocument[]
+  contractViolations  DisciplinaryContractViolation[]
+
+  @@unique([caseNumber, organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, priority])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, departmentId])
+  @@map("disciplinary_cases")
+}
+
+model DisciplinaryStep {
+  id            String      @id @default(uuid())
+  caseId        String      @map("case_id")
+  stepNumber    Int         @map("step_number")
+  name          String
+  description   String?
+  deadline      DateTime?
+  completedAt   DateTime?   @map("completed_at")
+  completedById String?     @map("completed_by_id")
+  status        StepStatus  @default(PENDING)
+  notes         String?
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  case          DisciplinaryCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  completedBy   User?            @relation("DisciplinaryStepCompletedBy", fields: [completedById], references: [id])
+
+  @@map("disciplinary_steps")
+}
+
+model DisciplinaryNote {
+  id            String   @id @default(uuid())
+  caseId        String   @map("case_id")
+  userId        String   @map("user_id")
+  content       String
+  isInternal    Boolean  @default(false) @map("is_internal")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  case          DisciplinaryCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user          User             @relation(fields: [userId], references: [id])
+
+  @@map("disciplinary_notes")
+}
+
+model DisciplinaryMessage {
+  id            String   @id @default(uuid())
+  caseId        String   @map("case_id")
+  userId        String   @map("user_id")
+  parentId      String?  @map("parent_id")
+  content       String
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  case          DisciplinaryCase       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user          User                   @relation(fields: [userId], references: [id])
+  parent        DisciplinaryMessage?   @relation("DisciplinaryReplies", fields: [parentId], references: [id])
+  replies       DisciplinaryMessage[]  @relation("DisciplinaryReplies")
+
+  @@map("disciplinary_messages")
+}
+
+model DisciplinaryDocument {
+  id          String   @id @default(uuid())
+  caseId      String   @map("case_id")
+  fileName    String   @map("file_name")
+  fileType    String   @map("file_type")
+  fileSize    Int      @map("file_size")
+  storagePath String   @map("storage_path")
+  uploadedAt  DateTime @default(now()) @map("uploaded_at")
+
+  case        DisciplinaryCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@map("disciplinary_documents")
+}
+
+model DisciplinarySnippet {
+  id              String                       @id @default(uuid())
+  organizationId  String                       @map("organization_id")
+  name            String
+  content         String
+  category        DisciplinarySnippetCategory
+  isActive        Boolean                      @default(true) @map("is_active")
+  createdAt       DateTime                     @default(now()) @map("created_at")
+  updatedAt       DateTime                     @updatedAt @map("updated_at")
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("disciplinary_snippets")
+}
+
+model DisciplinaryContractViolation {
+  id                String   @id @default(uuid())
+  caseId            String   @map("case_id")
+  contractArticleId String   @map("contract_article_id")
+  notes             String?
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  case              DisciplinaryCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  contractArticle   ContractArticle  @relation(fields: [contractArticleId], references: [id])
+
+  @@unique([caseId, contractArticleId])
+  @@map("disciplinary_contract_violations")
 }

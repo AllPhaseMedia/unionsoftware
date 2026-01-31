@@ -211,6 +211,68 @@ export const emailCampaignSchema = z.object({
 // Campaign update schema (allows partial updates)
 export const emailCampaignUpdateSchema = emailCampaignSchema.partial();
 
+// Disciplinary schemas
+export const disciplinarySchema = z.object({
+  memberId: z.string().optional().nullable().or(z.literal("")),
+  representativeId: z.string().optional().nullable().or(z.literal("")),
+  departmentId: z.string().optional().nullable().or(z.literal("")),
+  type: z.enum(["ATTENDANCE", "PERFORMANCE", "CONDUCT", "POLICY_VIOLATION", "SAFETY", "OTHER"]),
+  description: z.string().min(10, "Description must be at least 10 characters"),
+  incidentDate: dateField,
+  memberJobTitle: z.string().optional().nullable().or(z.literal("")),
+  supervisorName: z.string().optional().nullable().or(z.literal("")),
+  contractArticleIds: z.array(z.string()).optional(),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
+  filingDate: z.date(),
+  customFields: z.record(z.string(), z.any()).optional(),
+});
+
+// Schema for API requests (accepts date as string)
+export const disciplinaryApiSchema = disciplinarySchema.extend({
+  filingDate: z.union([z.date(), z.string().transform((val) => new Date(val))]),
+  incidentDate: apiDateField,
+});
+
+export const disciplinaryUpdateSchema = disciplinarySchema.extend({
+  status: z.enum(["OPEN", "IN_PROGRESS", "PENDING_REVIEW", "RESOLVED", "CLOSED"]),
+  outcome: z.enum(["NO_ACTION", "VERBAL_WARNING", "WRITTEN_WARNING", "SUSPENSION", "TERMINATION", "OTHER"]).optional().nullable(),
+  outcomeNotes: z.string().optional().nullable(),
+});
+
+// API version of update schema (accepts date as string)
+export const disciplinaryUpdateApiSchema = disciplinaryApiSchema.extend({
+  status: z.enum(["OPEN", "IN_PROGRESS", "PENDING_REVIEW", "RESOLVED", "CLOSED"]),
+  outcome: z.enum(["NO_ACTION", "VERBAL_WARNING", "WRITTEN_WARNING", "SUSPENSION", "TERMINATION", "OTHER"]).optional().nullable(),
+  outcomeNotes: z.string().optional().nullable(),
+});
+
+// Disciplinary step schema
+export const disciplinaryStepSchema = z.object({
+  stepNumber: z.number().int().positive(),
+  name: z.string().min(1, "Step name is required"),
+  description: z.string().optional(),
+  deadline: dateField,
+  status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "OVERDUE", "SKIPPED"]),
+  notes: z.string().optional(),
+});
+
+// Disciplinary step template schema
+export const disciplinaryStepTemplateSchema = z.object({
+  stepNumber: z.number().int().positive(),
+  name: z.string().min(1, "Step name is required"),
+  description: z.string().optional(),
+  defaultDeadlineDays: z.number().int().positive().optional().nullable(),
+  isActive: z.boolean().default(true),
+});
+
+// Disciplinary snippet schema
+export const disciplinarySnippetSchema = z.object({
+  name: z.string().min(1, "Snippet name is required"),
+  content: z.string().min(1, "Snippet content is required"),
+  category: z.enum(["INVESTIGATION", "INTERVIEW", "RESOLUTION", "GENERAL"]),
+  isActive: z.boolean().default(true),
+});
+
 // Type exports
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
@@ -231,3 +293,8 @@ export type UserInput = z.infer<typeof userSchema>;
 export type CampaignTargetCriteriaInput = z.infer<typeof campaignTargetCriteriaSchema>;
 export type EmailCampaignInput = z.infer<typeof emailCampaignSchema>;
 export type EmailCampaignUpdateInput = z.infer<typeof emailCampaignUpdateSchema>;
+export type DisciplinaryInput = z.infer<typeof disciplinarySchema>;
+export type DisciplinaryUpdateInput = z.infer<typeof disciplinaryUpdateSchema>;
+export type DisciplinaryStepInput = z.infer<typeof disciplinaryStepSchema>;
+export type DisciplinaryStepTemplateInput = z.infer<typeof disciplinaryStepTemplateSchema>;
+export type DisciplinarySnippetInput = z.infer<typeof disciplinarySnippetSchema>;

@@ -50,7 +50,7 @@ export async function POST(req: Request) {
           },
         });
 
-        // Create default step templates for the organization
+        // Create default grievance step templates for the organization
         await prisma.stepTemplate.createMany({
           data: [
             {
@@ -76,6 +76,54 @@ export async function POST(req: Request) {
               name: "Arbitration",
               stepNumber: 4,
               defaultDeadlineDays: 30,
+            },
+          ],
+        });
+
+        // Create default disciplinary step templates for the organization
+        await prisma.disciplinaryStepTemplate.createMany({
+          data: [
+            {
+              organizationId: org.id,
+              name: "Investigation",
+              stepNumber: 1,
+              defaultDeadlineDays: 7,
+              description: "Initial investigation of the incident",
+            },
+            {
+              organizationId: org.id,
+              name: "Member Interview",
+              stepNumber: 2,
+              defaultDeadlineDays: 5,
+              description: "Interview with the member regarding the incident",
+            },
+            {
+              organizationId: org.id,
+              name: "Evidence Collection",
+              stepNumber: 3,
+              defaultDeadlineDays: 7,
+              description: "Gather all relevant evidence and documentation",
+            },
+            {
+              organizationId: org.id,
+              name: "Management Review",
+              stepNumber: 4,
+              defaultDeadlineDays: 5,
+              description: "Management reviews findings and proposed action",
+            },
+            {
+              organizationId: org.id,
+              name: "Union Consultation",
+              stepNumber: 5,
+              defaultDeadlineDays: 5,
+              description: "Consultation with union representative",
+            },
+            {
+              organizationId: org.id,
+              name: "Decision",
+              stepNumber: 6,
+              defaultDeadlineDays: 3,
+              description: "Final decision on disciplinary action",
             },
           ],
         });

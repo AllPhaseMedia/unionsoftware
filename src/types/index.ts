@@ -22,6 +22,14 @@ import type {
   CampaignEmail,
   EmailOpen,
   EmailClick,
+  DisciplinaryCase,
+  DisciplinaryStep,
+  DisciplinaryNote,
+  DisciplinaryMessage,
+  DisciplinaryDocument,
+  DisciplinaryStepTemplate,
+  DisciplinarySnippet,
+  DisciplinaryContractViolation,
   UserRole,
   MemberStatus,
   EmploymentType,
@@ -35,6 +43,10 @@ import type {
   AuditAction,
   CampaignStatus,
   EmailStatus,
+  DisciplinaryStatus,
+  DisciplinaryOutcome,
+  DisciplinaryType,
+  DisciplinarySnippetCategory,
 } from "@prisma/client";
 
 // Re-export Prisma types
@@ -62,6 +74,14 @@ export type {
   CampaignEmail,
   EmailOpen,
   EmailClick,
+  DisciplinaryCase,
+  DisciplinaryStep,
+  DisciplinaryNote,
+  DisciplinaryMessage,
+  DisciplinaryDocument,
+  DisciplinaryStepTemplate,
+  DisciplinarySnippet,
+  DisciplinaryContractViolation,
 };
 
 export {
@@ -78,6 +98,10 @@ export {
   AuditAction,
   CampaignStatus,
   EmailStatus,
+  DisciplinaryStatus,
+  DisciplinaryOutcome,
+  DisciplinaryType,
+  DisciplinarySnippetCategory,
 };
 
 // Extended types with relations
@@ -254,4 +278,62 @@ export interface CampaignStats {
   totalClicks: number;
   openRate: number;
   clickRate: number;
+}
+
+// Disciplinary types
+export interface DisciplinaryMessageWithUser extends DisciplinaryMessage {
+  user: User;
+  replies?: DisciplinaryMessageWithUser[];
+}
+
+export interface DisciplinaryNoteWithUser extends DisciplinaryNote {
+  user: User;
+}
+
+export interface DisciplinaryContractViolationWithArticle {
+  id: string;
+  caseId: string;
+  contractArticleId: string;
+  notes: string | null;
+  createdAt: Date;
+  contractArticle: ContractArticle & {
+    contract: Contract;
+  };
+}
+
+export interface DisciplinaryCaseWithRelations extends DisciplinaryCase {
+  member?: Member | null;
+  representative?: User | null;
+  createdBy: User;
+  department?: Department | null;
+  steps: DisciplinaryStep[];
+  notes: DisciplinaryNoteWithUser[];
+  messages: DisciplinaryMessageWithUser[];
+  documents: DisciplinaryDocument[];
+  contractViolations: DisciplinaryContractViolationWithArticle[];
+}
+
+export interface DisciplinaryFilters {
+  status?: DisciplinaryStatus;
+  priority?: Priority;
+  type?: DisciplinaryType;
+  departmentId?: string;
+  representativeId?: string;
+  memberId?: string;
+  dateFrom?: Date;
+  dateTo?: Date;
+  search?: string;
+}
+
+export interface DisciplinaryFormData {
+  memberId?: string;
+  representativeId?: string;
+  departmentId?: string;
+  description: string;
+  type: DisciplinaryType;
+  priority: Priority;
+  incidentDate: Date;
+  filingDate: Date;
+  managementPosition?: string;
+  unionResponse?: string;
 }

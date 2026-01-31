@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface QuickNoteProps {
-  entityType: "grievance" | "member";
+  entityType: "grievance" | "member" | "disciplinary";
   entityId: string;
   onNoteAdded?: () => void;
 }
@@ -44,6 +44,8 @@ export function QuickNote({ entityType, entityId, onNoteAdded }: QuickNoteProps)
       const url =
         entityType === "grievance"
           ? `/api/grievances/${entityId}/notes`
+          : entityType === "disciplinary"
+          ? `/api/disciplinary/${entityId}/notes`
           : `/api/members/${entityId}/notes`;
 
       const response = await fetch(url, {

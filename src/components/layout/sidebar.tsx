@@ -20,6 +20,7 @@ import {
   Send,
   User,
   Megaphone,
+  FileWarning,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -54,6 +55,7 @@ export function Sidebar({ appearance = {} }: SidebarProps) {
   const mainNavItems = [
     { title: "Dashboard", href: "/", icon: LayoutDashboard },
     { title: "Grievances", href: "/grievances", icon: FileText },
+    { title: "Disciplinary", href: "/disciplinary", icon: FileWarning },
     { title: "Members", href: "/members", icon: Users },
     { title: "Campaigns", href: "/campaigns", icon: Megaphone },
     { title: "Reports", href: "/reports", icon: BarChart3 },
@@ -65,6 +67,7 @@ export function Sidebar({ appearance = {} }: SidebarProps) {
     { title: "Appearance", href: "/settings/appearance", icon: Palette },
     { title: "Departments", href: "/settings/departments", icon: Building2 },
     { title: "Grievance Settings", href: "/settings/grievance", icon: Briefcase },
+    { title: "Disciplinary Settings", href: "/settings/disciplinary", icon: FileWarning },
     { title: "Custom Fields", href: "/settings/custom-fields", icon: FormInput },
     { title: "PDF Templates", href: "/settings/pdf-templates", icon: FileType },
     { title: "Email Templates", href: "/settings/email-templates", icon: Mail },

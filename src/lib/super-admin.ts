@@ -28,7 +28,7 @@ export async function createImpersonationToken(targetUserId: string): Promise<st
   const client = await clerkClient();
 
   // Create an actor token that allows the super admin to act as the target user
-  const token = await client.actorTokens.createActorToken({
+  const token = await client.actorTokens.create({
     userId: targetUserId,
     actor: {
       sub: superAdminId,

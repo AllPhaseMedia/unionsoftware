@@ -140,8 +140,8 @@ export class GrievanceService {
             stepNumber: template.stepNumber,
             name: template.name,
             description: template.description,
-            deadline: template.defaultDays
-              ? new Date(filingDate.getTime() + template.defaultDays * 24 * 60 * 60 * 1000)
+            deadline: template.defaultDeadlineDays
+              ? new Date(filingDate.getTime() + template.defaultDeadlineDays * 24 * 60 * 60 * 1000)
               : null,
           })),
         });

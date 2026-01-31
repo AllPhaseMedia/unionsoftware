@@ -221,9 +221,9 @@ export async function POST(request: Request) {
         for (const template of stepTemplates) {
           let deadline: Date | null = null;
 
-          if (template.defaultDays) {
+          if (template.defaultDeadlineDays) {
             // Calculate deadline from the previous step's deadline (or filing date for step 1)
-            deadline = new Date(previousDeadline.getTime() + template.defaultDays * 24 * 60 * 60 * 1000);
+            deadline = new Date(previousDeadline.getTime() + template.defaultDeadlineDays * 24 * 60 * 60 * 1000);
             previousDeadline = deadline;
           }
 

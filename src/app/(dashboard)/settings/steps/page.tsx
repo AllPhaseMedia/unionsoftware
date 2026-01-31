@@ -65,7 +65,7 @@ export default function StepsPage() {
         stepNumber: step.stepNumber,
         name: step.name,
         description: step.description || "",
-        defaultDays: step.defaultDays?.toString() || "",
+        defaultDays: step.defaultDeadlineDays?.toString() || "",
         isActive: step.isActive,
       });
     } else {
@@ -98,8 +98,11 @@ export default function StepsPage() {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...formData,
-          defaultDays: formData.defaultDays ? parseInt(formData.defaultDays) : null,
+          stepNumber: formData.stepNumber,
+          name: formData.name,
+          description: formData.description,
+          defaultDeadlineDays: formData.defaultDays ? parseInt(formData.defaultDays) : null,
+          isActive: formData.isActive,
         }),
       });
 
@@ -250,7 +253,7 @@ export default function StepsPage() {
                     <TableCell className="text-gray-500 max-w-[200px] truncate">
                       {step.description || "-"}
                     </TableCell>
-                    <TableCell>{step.defaultDays || "-"}</TableCell>
+                    <TableCell>{step.defaultDeadlineDays || "-"}</TableCell>
                     <TableCell>
                       <Badge variant={step.isActive ? "default" : "secondary"}>
                         {step.isActive ? "Active" : "Inactive"}

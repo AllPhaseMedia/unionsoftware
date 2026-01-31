@@ -78,11 +78,11 @@ export async function PUT(request: Request, { params }: RouteParams) {
         orderBy: { stepNumber: "asc" },
       });
 
-      // Create a map of step number to defaultDays
+      // Create a map of step number to defaultDeadlineDays
       const templateDaysMap = new Map<number, number>();
       stepTemplates.forEach((t) => {
-        if (t.defaultDays) {
-          templateDaysMap.set(t.stepNumber, t.defaultDays);
+        if (t.defaultDeadlineDays) {
+          templateDaysMap.set(t.stepNumber, t.defaultDeadlineDays);
         }
       });
 

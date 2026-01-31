@@ -39,8 +39,8 @@ export default async function DashboardLayout({
   if (!dbUser) {
     // User is authenticated with Clerk but not in our database yet
     // This can happen if webhook hasn't synced or org was just created
-    // Redirect to create-organization to trigger the webhook flow
-    redirect("/create-organization");
+    // Redirect to setup page which will poll until user is synced
+    redirect("/setup");
   }
 
   // Fetch appearance settings server-side

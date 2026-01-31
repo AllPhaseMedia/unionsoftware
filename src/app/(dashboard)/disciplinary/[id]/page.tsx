@@ -158,34 +158,6 @@ export default async function DisciplinaryDetailPage({ params }: PageProps) {
             </CardContent>
           </Card>
 
-          {/* Management Position */}
-          {disciplinaryCase.managementPosition && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Management Position</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-700 whitespace-pre-wrap">
-                  {disciplinaryCase.managementPosition}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Union Response */}
-          {disciplinaryCase.unionResponse && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Union Response</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-700 whitespace-pre-wrap">
-                  {disciplinaryCase.unionResponse}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Steps Timeline */}
           <DisciplinaryStepsTimeline
             steps={disciplinaryCase.steps}

@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUserWithOrg } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const dbUser = await getAuthUser();
+    const dbUser = await getAuthUserWithOrg();
 
     if (!dbUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -48,7 +48,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const dbUser = await getAuthUser();
+    const dbUser = await getAuthUserWithOrg();
 
     if (!dbUser || dbUser.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
@@ -192,7 +192,7 @@ export async function POST(request: Request) {
 
 export async function DELETE() {
   try {
-    const dbUser = await getAuthUser();
+    const dbUser = await getAuthUserWithOrg();
 
     if (!dbUser || dbUser.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });

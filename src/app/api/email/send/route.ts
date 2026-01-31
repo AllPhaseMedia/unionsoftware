@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUserWithOrg } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { format } from "date-fns";
 import nodemailer from "nodemailer";
@@ -86,7 +86,7 @@ function createTransporter(settings: Record<string, string>) {
 
 export async function POST(request: Request) {
   try {
-    const dbUser = await getAuthUser();
+    const dbUser = await getAuthUserWithOrg();
 
     if (!dbUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

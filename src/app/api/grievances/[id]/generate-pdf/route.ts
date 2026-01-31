@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUserWithOrg } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
 import { format } from "date-fns";
@@ -65,7 +65,7 @@ function replaceTemplateVariables(template: string, data: Record<string, unknown
 export async function POST(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const dbUser = await getAuthUser();
+    const dbUser = await getAuthUserWithOrg();
 
     if (!dbUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

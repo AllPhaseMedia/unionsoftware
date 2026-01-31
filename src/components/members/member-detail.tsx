@@ -28,8 +28,9 @@ import {
   Hash,
   Cake,
   Eye,
+  FileWarning,
 } from "lucide-react";
-import type { Member, MemberNote, MemberDocument, Grievance } from "@/types";
+import type { Member, MemberNote, MemberDocument, Grievance, DisciplinaryCase } from "@/types";
 import { EmailComposeDialog } from "@/components/email/email-compose-dialog";
 
 const statusColors: Record<string, string> = {
@@ -48,6 +49,7 @@ const employmentTypeLabels: Record<string, string> = {
 export interface MemberWithRelations extends Member {
   department?: { id: string; name: string } | null;
   grievances: Grievance[];
+  disciplinaryCases: DisciplinaryCase[];
   notes: (MemberNote & { user: { name: string } })[];
   documents: MemberDocument[];
 }
@@ -242,6 +244,9 @@ export function MemberDetail({ initialMember }: MemberDetailProps) {
           <TabsTrigger value="grievances">
             Grievances ({member.grievances.length})
           </TabsTrigger>
+          <TabsTrigger value="disciplinary">
+            Disciplinary ({member.disciplinaryCases.length})
+          </TabsTrigger>
           <TabsTrigger value="documents">
             Documents ({member.documents.length})
           </TabsTrigger>
@@ -406,6 +411,50 @@ export function MemberDetail({ initialMember }: MemberDetailProps) {
                       <p className="text-sm text-gray-600 line-clamp-2">{grievance.description}</p>
                       <p className="text-xs text-gray-400 mt-1">
                         Filed {format(new Date(grievance.filingDate), "MMM d, yyyy")}
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Disciplinary Review */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <FileWarning className="h-5 w-5" />
+                  Disciplinary Review ({member.disciplinaryCases.length})
+                </CardTitle>
+                <Link href={`/disciplinary/new?memberId=${member.id}`}>
+                  <Button size="sm" variant="outline">
+                    <Plus className="h-4 w-4 mr-1" />
+                    New Case
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {member.disciplinaryCases.length === 0 ? (
+                <p className="text-gray-500 text-sm">No disciplinary cases on record.</p>
+              ) : (
+                <div className="space-y-3">
+                  {member.disciplinaryCases.map((disciplinaryCase) => (
+                    <Link
+                      key={disciplinaryCase.id}
+                      href={`/disciplinary/${disciplinaryCase.id}`}
+                      className="block p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium">{disciplinaryCase.caseNumber}</span>
+                        <Badge variant={disciplinaryCase.status === "RESOLVED" ? "default" : "secondary"}>
+                          {disciplinaryCase.status.replace("_", " ")}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 line-clamp-2">{disciplinaryCase.description}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Filed {format(new Date(disciplinaryCase.filingDate), "MMM d, yyyy")}
                       </p>
                     </Link>
                   ))}
@@ -583,6 +632,52 @@ export function MemberDetail({ initialMember }: MemberDetailProps) {
                       <p className="text-sm text-gray-600 line-clamp-2">{grievance.description}</p>
                       <p className="text-xs text-gray-400 mt-1">
                         Filed {format(new Date(grievance.filingDate), "MMM d, yyyy")}
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Disciplinary Tab */}
+        <TabsContent value="disciplinary" className="mt-6">
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <FileWarning className="h-5 w-5" />
+                  Disciplinary Review ({member.disciplinaryCases.length})
+                </CardTitle>
+                <Link href={`/disciplinary/new?memberId=${member.id}`}>
+                  <Button size="sm" variant="outline">
+                    <Plus className="h-4 w-4 mr-1" />
+                    New Case
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {member.disciplinaryCases.length === 0 ? (
+                <p className="text-gray-500 text-sm">No disciplinary cases on record.</p>
+              ) : (
+                <div className="space-y-3">
+                  {member.disciplinaryCases.map((disciplinaryCase) => (
+                    <Link
+                      key={disciplinaryCase.id}
+                      href={`/disciplinary/${disciplinaryCase.id}`}
+                      className="block p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium">{disciplinaryCase.caseNumber}</span>
+                        <Badge variant={disciplinaryCase.status === "RESOLVED" ? "default" : "secondary"}>
+                          {disciplinaryCase.status.replace("_", " ")}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 line-clamp-2">{disciplinaryCase.description}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Filed {format(new Date(disciplinaryCase.filingDate), "MMM d, yyyy")}
                       </p>
                     </Link>
                   ))}

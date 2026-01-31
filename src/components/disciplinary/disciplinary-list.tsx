@@ -680,7 +680,7 @@ export function DisciplinaryList({ initialCases, initialTotal, stepTemplates, de
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Disciplinary Cases</h1>
+          <h1 className="text-2xl font-bold">Disciplinary Review Cases</h1>
           <p className="text-gray-500">
             {total} case{total !== 1 ? "s" : ""} total
           </p>

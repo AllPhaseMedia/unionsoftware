@@ -373,7 +373,7 @@ export default function DisciplinarySettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Disciplinary Settings</h1>
+        <h1 className="text-2xl font-bold">Disciplinary Review Settings</h1>
         <p className="text-gray-500">Configure workflow steps, text snippets, and case number format</p>
       </div>
 

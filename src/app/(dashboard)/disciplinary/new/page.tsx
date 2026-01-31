@@ -60,7 +60,7 @@ export default function NewDisciplinaryPage() {
     <div className="max-w-2xl mx-auto">
       <Card>
         <CardHeader>
-          <CardTitle>New Disciplinary Case</CardTitle>
+          <CardTitle>New Disciplinary Review Case</CardTitle>
         </CardHeader>
         <CardContent>
           <DisciplinaryForm

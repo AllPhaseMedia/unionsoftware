@@ -34,6 +34,17 @@ export default async function MemberDetailPage({ params }: PageProps) {
         },
         orderBy: { filingDate: "desc" },
       },
+      disciplinaryCases: {
+        select: {
+          id: true,
+          caseNumber: true,
+          description: true,
+          status: true,
+          type: true,
+          filingDate: true,
+        },
+        orderBy: { filingDate: "desc" },
+      },
       notes: {
         include: {
           user: { select: { name: true } },

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { memberSchema } from "@/lib/validations";
+import { memberApiSchema } from "@/lib/validations";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -72,7 +72,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     const body = await request.json();
-    const validatedData = memberSchema.parse(body);
+    const validatedData = memberApiSchema.parse(body);
 
     const member = await prisma.member.update({
       where: { id },

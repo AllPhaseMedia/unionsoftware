@@ -20,6 +20,13 @@ export const registerSchema = z.object({
 // Helper for optional date fields
 const dateField = z.date().optional().nullable();
 
+// Helper for API date fields that accept strings or dates
+const apiDateField = z.union([
+  z.date(),
+  z.string().transform((val) => val ? new Date(val) : null),
+  z.null(),
+]).optional().nullable();
+
 // Member schemas
 export const memberSchema = z.object({
   memberId: z.string().optional().or(z.literal("")),
@@ -40,6 +47,12 @@ export const memberSchema = z.object({
   status: z.enum(["MEMBER", "NON_MEMBER", "SEVERED"]),
   employmentType: z.enum(["FULL_TIME", "PART_TIME", "TEMPORARY", "SEASONAL"]).optional().nullable(),
   customFields: z.record(z.string(), z.any()).optional(),
+});
+
+// Schema for API requests (accepts date as string)
+export const memberApiSchema = memberSchema.extend({
+  dateOfBirth: apiDateField,
+  hireDate: apiDateField,
 });
 
 // Grievance schemas

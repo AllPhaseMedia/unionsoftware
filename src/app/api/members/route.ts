@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
-import { memberSchema } from "@/lib/validations";
+import { memberApiSchema } from "@/lib/validations";
 import { ZodError } from "zod";
 
 export async function GET(request: Request) {
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const validatedData = memberSchema.parse(body);
+    const validatedData = memberApiSchema.parse(body);
 
     const member = await prisma.member.create({
       data: {

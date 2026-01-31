@@ -36,6 +36,10 @@ export async function createImpersonationToken(targetUserId: string): Promise<st
     expiresInSeconds: 3600, // 1 hour
   });
 
+  if (!token.token) {
+    throw new Error("Failed to create actor token");
+  }
+
   return token.token;
 }
 

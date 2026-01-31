@@ -22,6 +22,7 @@ import { DocumentsSection } from "@/components/grievances/documents-section";
 import { NotesSection } from "@/components/grievances/notes-section";
 import { PdfGenerateButton } from "@/components/grievances/pdf-generate-button";
 import { GrievanceActions } from "@/components/grievances/grievance-actions";
+import { ActivityLog } from "@/components/grievances/activity-log";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -81,6 +82,7 @@ export default async function GrievanceDetailPage({ params }: PageProps) {
       createdBy: true,
       department: true,
       steps: {
+        include: { completedBy: true },
         orderBy: { stepNumber: "asc" },
       },
       notes: {
@@ -334,6 +336,9 @@ export default async function GrievanceDetailPage({ params }: PageProps) {
             notes={grievance.notes}
             grievanceId={grievance.id}
           />
+
+          {/* Activity Log */}
+          <ActivityLog grievance={grievance} />
 
           {/* Metadata */}
           <Card>

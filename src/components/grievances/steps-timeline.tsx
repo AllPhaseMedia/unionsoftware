@@ -327,7 +327,10 @@ export function StepsTimeline({ steps, grievanceId, onStepUpdate }: StepsTimelin
                         </div>
                       )}
                       {step.notes && (
-                        <p className="italic">&quot;{step.notes}&quot;</p>
+                        <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                          <p className="text-xs font-medium text-amber-800 mb-1">Notes:</p>
+                          <p className="text-sm text-amber-900 whitespace-pre-wrap">{step.notes}</p>
+                        </div>
                       )}
                     </div>
 

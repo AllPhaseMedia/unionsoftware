@@ -1,14 +1,78 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
-import { grievanceSchema } from "@/lib/validations";
+import { grievanceApiSchema } from "@/lib/validations";
 
-function generateGrievanceNumber(): string {
+interface CaseNumberSettings {
+  prefix: string;
+  includeYear: boolean;
+  separator: string;
+  nextNumber: number;
+  padding: number;
+}
+
+const DEFAULT_CASE_NUMBER_SETTINGS: CaseNumberSettings = {
+  prefix: "GR",
+  includeYear: true,
+  separator: "-",
+  nextNumber: 1,
+  padding: 4,
+};
+
+async function getCaseNumberSettings(organizationId: string): Promise<CaseNumberSettings> {
+  const settings = await prisma.systemSetting.findMany({
+    where: {
+      organizationId,
+      key: { startsWith: "caseNumber." },
+    },
+  });
+
+  const caseNumberSettings: CaseNumberSettings = { ...DEFAULT_CASE_NUMBER_SETTINGS };
+
+  for (const setting of settings) {
+    const key = setting.key.replace("caseNumber.", "");
+    if (key === "includeYear") {
+      caseNumberSettings.includeYear = setting.value === "true";
+    } else if (key === "nextNumber") {
+      caseNumberSettings.nextNumber = parseInt(setting.value, 10);
+    } else if (key === "padding") {
+      caseNumberSettings.padding = parseInt(setting.value, 10);
+    } else if (key === "prefix") {
+      caseNumberSettings.prefix = setting.value;
+    } else if (key === "separator") {
+      caseNumberSettings.separator = setting.value;
+    }
+  }
+
+  return caseNumberSettings;
+}
+
+async function generateGrievanceNumber(organizationId: string): Promise<string> {
+  const settings = await getCaseNumberSettings(organizationId);
+  const { prefix, includeYear, separator, nextNumber, padding } = settings;
   const year = new Date().getFullYear();
-  const random = Math.floor(Math.random() * 10000)
-    .toString()
-    .padStart(4, "0");
-  return `GR-${year}-${random}`;
+  const paddedNumber = String(nextNumber).padStart(padding, "0");
+
+  // Increment the next number for future use
+  await prisma.systemSetting.upsert({
+    where: {
+      key_organizationId: {
+        key: "caseNumber.nextNumber",
+        organizationId,
+      },
+    },
+    update: { value: String(nextNumber + 1) },
+    create: {
+      key: "caseNumber.nextNumber",
+      value: String(nextNumber + 1),
+      organizationId,
+    },
+  });
+
+  if (includeYear) {
+    return `${prefix}${separator}${year}${separator}${paddedNumber}`;
+  }
+  return `${prefix}${separator}${paddedNumber}`;
 }
 
 export async function GET(request: Request) {
@@ -91,10 +155,10 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const validatedData = grievanceSchema.parse(body);
+    const validatedData = grievanceApiSchema.parse(body);
 
-    // Generate unique grievance number
-    let grievanceNumber = generateGrievanceNumber();
+    // Generate unique grievance number using organization settings
+    let grievanceNumber = await generateGrievanceNumber(dbUser.organizationId);
     let attempts = 0;
     while (attempts < 10) {
       const existing = await prisma.grievance.findFirst({
@@ -104,7 +168,7 @@ export async function POST(request: Request) {
         },
       });
       if (!existing) break;
-      grievanceNumber = generateGrievanceNumber();
+      grievanceNumber = await generateGrievanceNumber(dbUser.organizationId);
       attempts++;
     }
 
@@ -189,7 +253,9 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error creating grievance:", error);
     if (error instanceof Error && error.name === "ZodError") {
-      return NextResponse.json({ error: "Invalid data" }, { status: 400 });
+      const zodError = error as unknown as { issues: Array<{ path: string[]; message: string }> };
+      const details = zodError.issues?.map(i => `${i.path.join('.')}: ${i.message}`).join(', ');
+      return NextResponse.json({ error: `Invalid data: ${details}` }, { status: 400 });
     }
     return NextResponse.json(
       { error: "Failed to create grievance" },

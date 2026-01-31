@@ -61,6 +61,12 @@ export async function PUT(request: Request, { params }: RouteParams) {
         ...(notes !== undefined && { notes }),
         ...(completedAt !== undefined && { completedAt: completedAt ? new Date(completedAt) : null }),
         ...(deadline !== undefined && { deadline: deadline ? new Date(deadline) : null }),
+        // Track who completed/updated the step
+        ...(status === "COMPLETED" || status === "IN_PROGRESS" || status === "SKIPPED"
+          ? { completedById: dbUser.id }
+          : {}),
+        // Clear completedBy when resetting
+        ...(status === "PENDING" && { completedById: null }),
       },
     });
 

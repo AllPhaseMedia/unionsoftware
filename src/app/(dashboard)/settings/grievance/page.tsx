@@ -58,6 +58,8 @@ import {
   Trash2,
   ListChecks,
   FileCheck,
+  Hash,
+  Save,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -76,6 +78,14 @@ interface TextSnippet {
 
 interface ContractWithArticles extends Contract {
   articles: ContractArticle[];
+}
+
+interface CaseNumberSettings {
+  prefix: string;
+  includeYear: boolean;
+  separator: string;
+  nextNumber: number;
+  padding: number;
 }
 
 export default function GrievanceSettingsPage() {
@@ -130,11 +140,23 @@ export default function GrievanceSettingsPage() {
     content: "",
   });
 
+  // Case number settings state
+  const [caseNumberSettings, setCaseNumberSettings] = useState<CaseNumberSettings>({
+    prefix: "GR",
+    includeYear: true,
+    separator: "-",
+    nextNumber: 1,
+    padding: 4,
+  });
+  const [isCaseNumberLoading, setIsCaseNumberLoading] = useState(true);
+  const [isCaseNumberSaving, setIsCaseNumberSaving] = useState(false);
+
   // Fetch all data on mount
   useEffect(() => {
     fetchSteps();
     fetchSnippets();
     fetchContracts();
+    fetchCaseNumberSettings();
   }, []);
 
   // Steps functions
@@ -327,6 +349,54 @@ export default function GrievanceSettingsPage() {
     }
   };
 
+  // Case number settings functions
+  const fetchCaseNumberSettings = async () => {
+    try {
+      const response = await fetch("/api/settings/case-number");
+      const data = await response.json();
+      if (data.success && data.data) {
+        setCaseNumberSettings(data.data);
+      }
+    } catch (error) {
+      toast.error("Failed to load case number settings");
+    } finally {
+      setIsCaseNumberLoading(false);
+    }
+  };
+
+  const saveCaseNumberSettings = async () => {
+    setIsCaseNumberSaving(true);
+    try {
+      const response = await fetch("/api/settings/case-number", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(caseNumberSettings),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to save");
+      }
+
+      toast.success("Case number settings saved");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save settings");
+    } finally {
+      setIsCaseNumberSaving(false);
+    }
+  };
+
+  const generatePreviewCaseNumber = () => {
+    const { prefix, includeYear, separator, nextNumber, padding } = caseNumberSettings;
+    const year = new Date().getFullYear();
+    const paddedNumber = String(nextNumber).padStart(padding, "0");
+
+    if (includeYear) {
+      return `${prefix}${separator}${year}${separator}${paddedNumber}`;
+    }
+    return `${prefix}${separator}${paddedNumber}`;
+  };
+
   const handleOpenContractDialog = (contract?: ContractWithArticles) => {
     if (contract) {
       setEditingContract(contract);
@@ -433,7 +503,7 @@ export default function GrievanceSettingsPage() {
       </div>
 
       <Tabs defaultValue="steps" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="steps" className="flex items-center gap-2">
             <ListChecks className="h-4 w-4" />
             Workflow Steps
@@ -445,6 +515,10 @@ export default function GrievanceSettingsPage() {
           <TabsTrigger value="contracts" className="flex items-center gap-2">
             <FileCheck className="h-4 w-4" />
             Contracts
+          </TabsTrigger>
+          <TabsTrigger value="case-number" className="flex items-center gap-2">
+            <Hash className="h-4 w-4" />
+            Case Number
           </TabsTrigger>
         </TabsList>
 
@@ -715,6 +789,159 @@ export default function GrievanceSettingsPage() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        {/* Case Number Format Tab */}
+        <TabsContent value="case-number" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-500">Configure the format for grievance case numbers</p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Format Settings</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isCaseNumberLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="prefix">Prefix</Label>
+                      <Input
+                        id="prefix"
+                        value={caseNumberSettings.prefix}
+                        onChange={(e) =>
+                          setCaseNumberSettings({ ...caseNumberSettings, prefix: e.target.value })
+                        }
+                        placeholder="GR"
+                        maxLength={10}
+                      />
+                      <p className="text-xs text-gray-500">The letters that appear at the start (e.g., GR, CASE, G)</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="separator">Separator</Label>
+                      <Input
+                        id="separator"
+                        value={caseNumberSettings.separator}
+                        onChange={(e) =>
+                          setCaseNumberSettings({ ...caseNumberSettings, separator: e.target.value })
+                        }
+                        placeholder="-"
+                        maxLength={3}
+                      />
+                      <p className="text-xs text-gray-500">Character between parts (e.g., -, /, .)</p>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="includeYear">Include Year</Label>
+                        <p className="text-xs text-gray-500">Add current year to case number</p>
+                      </div>
+                      <Switch
+                        id="includeYear"
+                        checked={caseNumberSettings.includeYear}
+                        onCheckedChange={(checked) =>
+                          setCaseNumberSettings({ ...caseNumberSettings, includeYear: checked })
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="nextNumber">Next Number</Label>
+                      <Input
+                        id="nextNumber"
+                        type="number"
+                        min="1"
+                        value={caseNumberSettings.nextNumber}
+                        onChange={(e) =>
+                          setCaseNumberSettings({ ...caseNumberSettings, nextNumber: parseInt(e.target.value) || 1 })
+                        }
+                      />
+                      <p className="text-xs text-gray-500">The next sequential number to be assigned</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="padding">Number Padding</Label>
+                      <Select
+                        value={String(caseNumberSettings.padding)}
+                        onValueChange={(value) =>
+                          setCaseNumberSettings({ ...caseNumberSettings, padding: parseInt(value) })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="2">2 digits (01)</SelectItem>
+                          <SelectItem value="3">3 digits (001)</SelectItem>
+                          <SelectItem value="4">4 digits (0001)</SelectItem>
+                          <SelectItem value="5">5 digits (00001)</SelectItem>
+                          <SelectItem value="6">6 digits (000001)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-gray-500">Minimum digits for the number portion</p>
+                    </div>
+
+                    <Button onClick={saveCaseNumberSettings} disabled={isCaseNumberSaving} className="w-full">
+                      {isCaseNumberSaving ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 h-4 w-4" />
+                      )}
+                      Save Settings
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Preview</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-gray-50 rounded-lg p-6 text-center">
+                  <p className="text-sm text-gray-500 mb-2">Next case number will be:</p>
+                  <p className="text-3xl font-mono font-bold text-primary">
+                    {generatePreviewCaseNumber()}
+                  </p>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <h4 className="font-medium">Format breakdown:</h4>
+                  <ul className="space-y-1 text-gray-500">
+                    <li>
+                      <span className="font-medium text-gray-700">Prefix:</span> {caseNumberSettings.prefix}
+                    </li>
+                    {caseNumberSettings.includeYear && (
+                      <li>
+                        <span className="font-medium text-gray-700">Year:</span> {new Date().getFullYear()}
+                      </li>
+                    )}
+                    <li>
+                      <span className="font-medium text-gray-700">Number:</span> {String(caseNumberSettings.nextNumber).padStart(caseNumberSettings.padding, "0")}
+                    </li>
+                    <li>
+                      <span className="font-medium text-gray-700">Separator:</span> &quot;{caseNumberSettings.separator}&quot;
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="bg-blue-50 rounded-lg p-4 text-sm">
+                  <h4 className="font-medium text-blue-900 mb-1">Note</h4>
+                  <p className="text-blue-700">
+                    The &quot;Next Number&quot; will automatically increment each time a new grievance is created.
+                    Only change this if you need to reset or adjust the sequence.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 

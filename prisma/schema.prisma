@@ -50,6 +50,7 @@ model User {
   memberNotes          MemberNote[]
   notifications        UserNotification[]
   auditLogs            AuditLog[]
+  completedSteps       GrievanceStep[]       @relation("StepCompletedBy")
 
   @@unique([email, organizationId])
   @@map("users")
@@ -178,12 +179,14 @@ model GrievanceStep {
   description   String?
   deadline      DateTime?
   completedAt   DateTime?   @map("completed_at")
+  completedById String?     @map("completed_by_id")
   status        StepStatus  @default(PENDING)
   notes         String?
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
 
   grievance     Grievance   @relation(fields: [grievanceId], references: [id], onDelete: Cascade)
+  completedBy   User?       @relation("StepCompletedBy", fields: [completedById], references: [id])
 
   @@map("grievance_steps")
 }

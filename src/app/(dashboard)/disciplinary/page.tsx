@@ -22,6 +22,7 @@ export default async function DisciplinaryPage() {
         priority: true,
         type: true,
         filingDate: true,
+        incidentDate: true,
         createdAt: true,
         member: { select: { id: true, firstName: true, lastName: true } },
         representative: { select: { id: true, name: true } },

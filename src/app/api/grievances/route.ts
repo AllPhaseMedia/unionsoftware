@@ -50,7 +50,7 @@ async function getCaseNumberSettings(organizationId: string): Promise<CaseNumber
 async function generateGrievanceNumber(organizationId: string): Promise<string> {
   const settings = await getCaseNumberSettings(organizationId);
   const { prefix, includeYear, separator, nextNumber, padding } = settings;
-  const year = new Date().getFullYear();
+  const year = String(new Date().getFullYear()).slice(-2); // 2-digit year
   const paddedNumber = String(nextNumber).padStart(padding, "0");
 
   // Increment the next number for future use

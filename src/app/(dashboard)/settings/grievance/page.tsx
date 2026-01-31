@@ -391,7 +391,7 @@ export default function GrievanceSettingsPage() {
 
   const generatePreviewCaseNumber = () => {
     const { prefix, includeYear, separator, nextNumber, padding } = caseNumberSettings;
-    const year = new Date().getFullYear();
+    const year = String(new Date().getFullYear()).slice(-2); // 2-digit year
     const paddedNumber = String(nextNumber).padStart(padding, "0");
 
     if (includeYear) {
@@ -923,7 +923,7 @@ export default function GrievanceSettingsPage() {
                     </li>
                     {caseNumberSettings.includeYear && (
                       <li>
-                        <span className="font-medium text-gray-700">Year:</span> {new Date().getFullYear()}
+                        <span className="font-medium text-gray-700">Year:</span> {String(new Date().getFullYear()).slice(-2)}
                       </li>
                     )}
                     <li>

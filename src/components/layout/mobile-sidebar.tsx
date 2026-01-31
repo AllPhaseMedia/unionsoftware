@@ -18,6 +18,7 @@ import {
   Palette,
   Briefcase,
   Send,
+  User,
 } from "lucide-react";
 import { useState } from "react";
 import { SheetClose } from "@/components/ui/sheet";
@@ -58,6 +59,7 @@ export function MobileSidebar({ appearance = {} }: MobileSidebarProps) {
   ];
 
   const settingsItems = [
+    { title: "Profile", href: "/settings/profile", icon: User },
     { title: "Appearance", href: "/settings/appearance", icon: Palette },
     { title: "Departments", href: "/settings/departments", icon: Building2 },
     { title: "Users", href: "/settings/users", icon: UserCog },

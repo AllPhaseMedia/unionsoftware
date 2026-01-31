@@ -30,7 +30,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, Pencil, Loader2 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Pencil, Loader2, Eye, EyeOff, Mail, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@/types";
 
@@ -46,10 +47,13 @@ export default function UsersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [createMode, setCreateMode] = useState<"invite" | "create">("invite");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     email: "",
     name: "",
+    password: "",
     role: "REPRESENTATIVE" as "ADMIN" | "REPRESENTATIVE" | "VIEWER",
     isActive: true,
   });
@@ -76,6 +80,7 @@ export default function UsersPage() {
       setFormData({
         email: user.email,
         name: user.name,
+        password: "",
         role: user.role,
         isActive: user.isActive,
       });
@@ -84,9 +89,12 @@ export default function UsersPage() {
       setFormData({
         email: "",
         name: "",
+        password: "",
         role: "REPRESENTATIVE",
         isActive: true,
       });
+      setCreateMode("invite");
+      setShowPassword(false);
     }
     setIsDialogOpen(true);
   };
@@ -100,26 +108,63 @@ export default function UsersPage() {
         const response = await fetch(`/api/users/${editingUser.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({
+            name: formData.name,
+            role: formData.role,
+            isActive: formData.isActive,
+          }),
         });
 
-        if (!response.ok) throw new Error("Failed to update");
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "Failed to update");
+        }
         toast.success("User updated");
+      } else if (createMode === "create") {
+        if (formData.password.length < 8) {
+          toast.error("Password must be at least 8 characters");
+          setIsSaving(false);
+          return;
+        }
+
+        const response = await fetch("/api/users/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: formData.email,
+            name: formData.name,
+            password: formData.password,
+            role: formData.role,
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to create user");
+        }
+        toast.success("User created successfully");
       } else {
         const response = await fetch("/api/users/invite", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({
+            email: formData.email,
+            name: formData.name,
+            role: formData.role,
+          }),
         });
 
-        if (!response.ok) throw new Error("Failed to invite");
-        toast.success("Invitation sent");
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to invite user");
+        }
+        toast.success(data.message || "Invitation sent");
       }
 
       setIsDialogOpen(false);
       fetchUsers();
     } catch (error) {
-      toast.error(editingUser ? "Failed to update user" : "Failed to invite user");
+      toast.error(error instanceof Error ? error.message : "Operation failed");
     } finally {
       setIsSaving(false);
     }
@@ -143,15 +188,35 @@ export default function UsersPage() {
           <DialogTrigger asChild>
             <Button onClick={() => handleOpenDialog()}>
               <Plus className="h-4 w-4 mr-2" />
-              Invite User
+              Add User
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {editingUser ? "Edit User" : "Invite User"}
+                {editingUser ? "Edit User" : "Add User"}
               </DialogTitle>
             </DialogHeader>
+
+            {!editingUser && (
+              <Tabs
+                value={createMode}
+                onValueChange={(v) => setCreateMode(v as "invite" | "create")}
+                className="w-full"
+              >
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="invite" className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    Send Invite
+                  </TabsTrigger>
+                  <TabsTrigger value="create" className="flex items-center gap-2">
+                    <UserPlus className="h-4 w-4" />
+                    Create Account
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Name *</Label>
@@ -161,6 +226,7 @@ export default function UsersPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
                   }
+                  placeholder="John Doe"
                   required
                 />
               </div>
@@ -173,10 +239,52 @@ export default function UsersPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
+                  placeholder="john@example.com"
                   disabled={!!editingUser}
                   required
                 />
               </div>
+
+              {!editingUser && createMode === "create" && (
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password *</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={formData.password}
+                      onChange={(e) =>
+                        setFormData({ ...formData, password: e.target.value })
+                      }
+                      placeholder="Minimum 8 characters"
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    You can share these credentials with the user directly.
+                  </p>
+                </div>
+              )}
+
+              {!editingUser && createMode === "invite" && (
+                <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-md">
+                  An email invitation will be sent to the user. They will set their own password when they accept the invitation.
+                </p>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="role">Role *</Label>
                 <Select
@@ -224,7 +332,11 @@ export default function UsersPage() {
                 </Button>
                 <Button type="submit" disabled={isSaving}>
                   {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {editingUser ? "Update" : "Send Invitation"}
+                  {editingUser
+                    ? "Update"
+                    : createMode === "create"
+                    ? "Create User"
+                    : "Send Invitation"}
                 </Button>
               </div>
             </form>

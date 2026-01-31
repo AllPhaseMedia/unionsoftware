@@ -36,6 +36,7 @@ interface EmailComposeDialogProps {
   recipientName?: string;
   memberId?: string;
   grievanceId?: string;
+  disciplinaryCaseId?: string;
   defaultSubject?: string;
 }
 
@@ -46,6 +47,7 @@ export function EmailComposeDialog({
   recipientName,
   memberId,
   grievanceId,
+  disciplinaryCaseId,
   defaultSubject,
 }: EmailComposeDialogProps) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
@@ -114,6 +116,7 @@ export function EmailComposeDialog({
           templateId: selectedTemplateId || undefined,
           memberId,
           grievanceId,
+          disciplinaryCaseId,
         }),
       });
 
